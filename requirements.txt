@@ -1,0 +1,8 @@
+streamlit
+pandas
+Pillow
+PyPDF2
+pdfplumber
+pdf2image
+python-docx
+openpyxl
