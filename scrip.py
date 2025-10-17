@@ -1,8 +1,7 @@
 """
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBAHARUI & FIX SYNTAX ERROR
-- Menggabungkan kode asli dengan perapihan UI dan penambahan 3 FITUR BARU.
-- PERBAIKAN KRUSIAL: Struktur kode diatur ulang untuk menghindari SyntaxError: 'return' outside function.
-- Perbaikan: Mengganti ikon navigasi (?? -> 🏠), menyusun ulang menu PDF.
+- Menambahkan FITUR BARU: Batch Rename PDF.
+- Memastikan semua struktur kode tetap modular dan bebas SyntaxError.
 """
 
 import os
@@ -233,7 +232,7 @@ if menu == "Dashboard":
 
     # PDF Tools
     with cols1[1]:
-        st.markdown('<div class="feature-card"><b>PDF Tools</b><br>Gabung, pisah, ekstrak, encrypt, **Reorder Halaman (Baru)**.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="feature-card"><b>PDF Tools</b><br>Gabung, pisah, encrypt, **Reorder** & **Batch Rename PDF (Baru)**.</div>', unsafe_allow_html=True)
         if st.button("Buka PDF Tools", key="dash_pdf"):
             navigate_to("PDF Tools")
 
@@ -249,7 +248,7 @@ if menu == "Dashboard":
     
     # File Tools
     with cols2[0]:
-        st.markdown('<div class="feature-card"><b>File Tools</b><br>Zip/unzip file, konversi dasar, & **Batch Rename Gambar (Baru)**.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="feature-card"><b>File Tools</b><br>Zip/unzip file, konversi dasar, Batch Rename Gambar & **PDF (Baru)**.</div>', unsafe_allow_html=True)
         if st.button("Buka File Tools", key="dash_file"):
             navigate_to("File Tools")
 
@@ -307,7 +306,8 @@ if menu == "PDF Tools":
         "--- Pilih Tools ---",
         "📂 Gabung PDF",
         "✂️ Pisah PDF", 
-        "🔀 Reorder/Hapus Halaman PDF (Fitur Baru)", # FITUR BARU 1
+        "🔀 Reorder/Hapus Halaman PDF", 
+        "📑 Batch Rename PDF (Fitur Baru)", # FITUR BARU: Batch Rename PDF
         "➡️ Image -> PDF",
         "⬅️ PDF -> Image", 
         "📝 Ekstraksi Teks/Tabel",
@@ -335,17 +335,67 @@ if menu == "PDF Tools":
         tool = "Gabung PDF"
     elif tool_select == "✂️ Pisah PDF":
         tool = "Pisah PDF"
-    elif tool_select == "🔀 Reorder/Hapus Halaman PDF (Fitur Baru)":
-        tool = "Reorder PDF" # FITUR BARU 1
+    elif tool_select == "🔀 Reorder/Hapus Halaman PDF":
+        tool = "Reorder PDF" 
+    elif tool_select == "📑 Batch Rename PDF (Fitur Baru)":
+        tool = "Batch Rename PDF" # FITUR BARU: Batch Rename PDF
     elif tool_select == "⬅️ PDF -> Image":
         tool = "PDF -> Image"
     elif tool_select == "➡️ Image -> PDF":
         tool = "Image -> PDF"
     else:
         tool = None
+    
 
+    # --- FITUR BARU: Batch Rename PDF ---
+    if tool == "Batch Rename PDF":
+        st.subheader("📑 Ganti Nama File PDF Massal")
+        st.markdown("Unggah banyak file PDF dan ganti namanya secara berurutan (*sequential*).")
 
-    # --- FITUR BARU 1: Reorder/Hapus Halaman PDF ---
+        uploaded_files = st.file_uploader(
+            "Unggah file PDF (multiple):", 
+            type=["pdf"], 
+            accept_multiple_files=True,
+            key="batch_rename_pdf_uploader"
+        )
+        
+        if uploaded_files:
+            st.info(f"Total {len(uploaded_files)} file PDF siap diganti namanya.")
+
+            col1, col2 = st.columns(2)
+            
+            new_prefix = col1.text_input("Prefix Nama File Baru:", value="Hasil_PDF", help="Contoh: Hasil_PDF_001.pdf")
+            start_num = col2.number_input("Mulai dari Angka (Counter):", min_value=1, value=1, step=1)
+
+            if st.button("Proses Ganti Nama (ZIP)", key="process_batch_rename_pdf"):
+                
+                # Validasi (tanpa return di lingkup global)
+                if not new_prefix:
+                    st.error("Prefix nama file tidak boleh kosong.")
+                else:
+                    output_zip = io.BytesIO()
+                    try:
+                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+                            for i, file in enumerate(uploaded_files, start_num):
+                                # Tentukan nama file baru (dengan counter 3 digit)
+                                new_filename = f"{new_prefix}_{i:03d}.pdf"
+                                
+                                # Tulis file asli ke zip dengan nama baru
+                                zf.writestr(new_filename, file.read())
+
+                        st.success(f"✅ Berhasil mengganti nama {len(uploaded_files)} file.")
+                        st.download_button(
+                            "Unduh File ZIP Hasil Rename",
+                            data=output_zip.getvalue(),
+                            file_name="pdf_renamed.zip",
+                            mime="application/zip"
+                        )
+
+                    except Exception as e:
+                        st.error(f"Gagal memproses file: {e}")
+                        traceback.print_exc()
+
+    # --- FITUR Reorder/Hapus Halaman PDF (Logika Asli) ---
     if tool == "Reorder PDF":
         st.subheader("🔀 Reorder atau Hapus Halaman PDF")
         st.markdown("Unggah file PDF Anda dan tentukan urutan halaman baru (contoh: `2, 1, 3` untuk membalik, atau `1, 3` untuk menghapus halaman 2).")
@@ -359,7 +409,6 @@ if menu == "PDF Tools":
                 num_pages = len(reader.pages)
                 st.info(f"PDF berhasil dimuat. Jumlah total halaman: **{num_pages}**.")
                 
-                # Buat daftar halaman default (misalnya 1, 2, 3...)
                 default_order = ", ".join(map(str, range(1, num_pages + 1)))
 
                 new_order_str = st.text_input(
@@ -371,22 +420,15 @@ if menu == "PDF Tools":
                 if st.button("Proses Reorder/Hapus Halaman", key="process_reorder"):
                     new_order_indices = []
                     
-                    # Logika utama dibungkus dalam try/except
                     try:
-                        # Parsing input string menjadi list index halaman (berbasis 0)
                         input_list = [int(x.strip()) for x in new_order_str.split(',') if x.strip().isdigit()]
                         
-                        # Cek validitas nomor halaman
                         if any(n < 1 or n > num_pages for n in input_list):
                             st.error(f"Nomor halaman harus antara 1 sampai {num_pages}.")
-                            # TIDAK ADA return DI LUAR FUNGSI: Eksekusi kode akan berlanjut, 
-                            # tapi blok ini akan dilewati karena terjadi exception atau error di atas.
                             raise ValueError("Invalid page number in input.")
 
-                        # Konversi nomor halaman berbasis 1 menjadi index berbasis 0
                         new_order_indices = [n - 1 for n in input_list]
                         
-                        # Jika parsing berhasil, lanjutkan pemrosesan PDF
                         writer = PdfWriter()
                         for index in new_order_indices:
                             writer.add_page(reader.pages[index])
@@ -404,7 +446,6 @@ if menu == "PDF Tools":
                         st.success(f"Pemrosesan selesai. Total halaman baru: {len(new_order_indices)}.")
 
                     except ValueError:
-                        # Value Error dari raise di atas atau parsing gagal (sudah ditangani st.error di atas)
                         pass
                     except Exception as e:
                         st.error(f"Format urutan halaman tidak valid atau terjadi kesalahan pemrosesan: {e}")
@@ -913,9 +954,60 @@ if menu == "MCU Tools":
 if menu == "File Tools":
     add_back_to_dashboard_button() 
     st.subheader("File Tools - zip / unzip / conversions")
-    mode = st.selectbox("Mode", ["Zip files", "Unzip file", "Excel -> CSV", "Word -> PDF (text)", "🔢 Batch Rename/Format Gambar (Fitur Baru)"])
+    mode = st.selectbox("Mode", [
+        "Zip files", 
+        "Unzip file", 
+        "Excel -> CSV", 
+        "Word -> PDF (text)", 
+        "🔢 Batch Rename/Format Gambar (Fitur Baru)", 
+        "📑 Batch Rename PDF (Fitur Baru)" # FITUR BARU: Batch Rename PDF
+        ])
     
-    # --- FITUR BARU 3: Batch Rename/Format Gambar ---
+    # --- LOGIKA Batch Rename PDF (Duplikasi dari PDF Tools) ---
+    if mode == "📑 Batch Rename PDF (Fitur Baru)":
+        st.subheader("📑 Ganti Nama File PDF Massal")
+        st.markdown("Unggah banyak file PDF dan ganti namanya secara berurutan (*sequential*).")
+
+        uploaded_files = st.file_uploader(
+            "Unggah file PDF (multiple):", 
+            type=["pdf"], 
+            accept_multiple_files=True,
+            key="batch_rename_pdf_uploader_2"
+        )
+        
+        if uploaded_files:
+            st.info(f"Total {len(uploaded_files)} file PDF siap diganti namanya.")
+
+            col1, col2 = st.columns(2)
+            
+            new_prefix = col1.text_input("Prefix Nama File Baru:", value="Hasil_PDF", help="Contoh: Hasil_PDF_001.pdf", key="prefix_pdf_2")
+            start_num = col2.number_input("Mulai dari Angka (Counter):", min_value=1, value=1, step=1, key="start_num_pdf_2")
+
+            if st.button("Proses Ganti Nama (ZIP)", key="process_batch_rename_pdf_2"):
+                
+                if not new_prefix:
+                    st.error("Prefix nama file tidak boleh kosong.")
+                else:
+                    output_zip = io.BytesIO()
+                    try:
+                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+                            for i, file in enumerate(uploaded_files, start_num):
+                                new_filename = f"{new_prefix}_{i:03d}.pdf"
+                                zf.writestr(new_filename, file.read())
+
+                        st.success(f"✅ Berhasil mengganti nama {len(uploaded_files)} file.")
+                        st.download_button(
+                            "Unduh File ZIP Hasil Rename",
+                            data=output_zip.getvalue(),
+                            file_name="pdf_renamed_2.zip",
+                            mime="application/zip"
+                        )
+
+                    except Exception as e:
+                        st.error(f"Gagal memproses file: {e}")
+                        traceback.print_exc()
+
+    # --- FITUR Batch Rename/Format Gambar (Logika Asli) ---
     if mode == "🔢 Batch Rename/Format Gambar (Fitur Baru)":
         st.subheader("🔢 Ganti Nama & Ubah Format Gambar Massal")
         st.markdown("Unggah beberapa gambar untuk mengganti namanya secara berurutan atau mengubah formatnya (misal: PNG ke JPG).")
@@ -932,51 +1024,41 @@ if menu == "File Tools":
 
             col1, col2 = st.columns(2)
             
-            new_prefix = col1.text_input("Prefix Nama File Baru:", value="KAY_File", help="Contoh: KAY_File_001.jpg")
-            new_format = col2.selectbox("Format Output Baru:", ["Sama seperti Asli", "JPG", "PNG", "WEBP"], index=0)
+            new_prefix = col1.text_input("Prefix Nama File Baru:", value="KAY_File", help="Contoh: KAY_File_001.jpg", key="prefix_img")
+            new_format = col2.selectbox("Format Output Baru:", ["Sama seperti Asli", "JPG", "PNG", "WEBP"], index=0, key="format_img")
 
             if st.button("Proses Batch File", key="process_batch_rename"):
                 
-                # Check validation (tanpa menggunakan return)
                 if not new_prefix:
                     st.error("Prefix nama file tidak boleh kosong.")
-                    # Gunakan st.stop() jika ingin menghentikan eksekusi script Streamlit di sini.
                 else:
-                    # Lanjutkan proses jika validasi berhasil
                     output_zip = io.BytesIO()
 
                     try:
                         with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
                             for i, file in enumerate(uploaded_files, 1):
                                 
-                                # Tentukan format output dan ekstensi
                                 _, original_ext = os.path.splitext(file.name)
-                                
                                 img = Image.open(file)
                                 img_io = io.BytesIO()
                                 
-                                # Tentukan format dan ekstensi output berdasarkan pilihan user
                                 if new_format == "Sama seperti Asli":
-                                    # Tentukan format penyimpanan dari file asli jika bisa, default ke JPEG
                                     output_format_pil = img.format if img.format else 'JPEG'
                                     output_ext = original_ext
                                 else:
                                     output_ext = "." + new_format.lower()
                                     output_format_pil = new_format.upper()
 
-                                # Tentukan nama file baru (dengan counter 3 digit)
                                 new_filename = f"{new_prefix}_{i:03d}{output_ext}"
                                 
-                                # Proses konversi/penyimpanan
-                                if output_format_pil == 'JPEG' or output_format_pil == 'JPG':
-                                    # Konversi ke RGB untuk JPEG
+                                if output_format_pil in ('JPEG', 'JPG'):
                                     img.convert("RGB").save(img_io, format='JPEG', quality=95) 
                                 elif output_format_pil == 'PNG':
                                     img.save(img_io, format='PNG')
                                 elif output_format_pil == 'WEBP':
                                     img.save(img_io, format='WEBP')
                                 else:
-                                    img.save(img_io, format=output_format_pil) # Fallback
+                                    img.save(img_io, format=output_format_pil) 
 
                                 img_io.seek(0)
                                 zf.writestr(new_filename, img_io.read())
@@ -1065,9 +1147,9 @@ if menu == "Tentang":
     st.markdown("""
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
     - Kompres foto & gambar
-    - Pengelolaan dokumen PDF (gabung, pisah, proteksi, ekstraksi, **Reorder/Hapus Halaman**)
+    - Pengelolaan dokumen PDF (gabung, pisah, proteksi, ekstraksi, **Reorder/Hapus Halaman**, **Batch Rename PDF**)
     - Analisis & pengolahan hasil Medical Check Up (MCU) (**Dashboard Analisis Data**)
-    - Manajemen file & konversi dasar (**Batch Rename/Format Gambar**)
+    - Manajemen file & konversi dasar (**Batch Rename/Format Gambar**, **Batch Rename PDF**)
 
     Beberapa fitur memerlukan library tambahan (instal di environment Anda):
     - `PyPDF2` (Dasar PDF)
