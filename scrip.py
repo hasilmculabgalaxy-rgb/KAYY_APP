@@ -1,8 +1,8 @@
 """
-KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBAHARUI
+KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBAHARUI & FIX SYNTAX ERROR
 - Menggabungkan kode asli dengan perapihan UI dan penambahan 3 FITUR BARU.
-- Perbaikan: Mengganti ikon navigasi, menyusun ulang menu PDF.
-- Catatan: Semua logika ditaruh di dalam blok IF utama atau fungsi untuk menghindari SyntaxError.
+- PERBAIKAN KRUSIAL: Struktur kode diatur ulang untuk menghindari SyntaxError: 'return' outside function.
+- Perbaikan: Mengganti ikon navigasi (?? -> 🏠), menyusun ulang menu PDF.
 """
 
 import os
@@ -50,7 +50,7 @@ except Exception:
     except Exception:
         pass # convert_from_path and convert_from_bytes remain None
 
-# ----------------- Helpers (Diambil dari scrip.txt) -----------------
+# ----------------- Helpers -----------------
 def make_zip_from_map(bytes_map: dict) -> bytes:
     b = io.BytesIO()
     with zipfile.ZipFile(b, "w") as z:
@@ -67,6 +67,7 @@ def df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     return out.getvalue()
 
 def try_encrypt(writer, password: str):
+    """Fungsi yang menampung 'return'"""
     try:
         writer.encrypt(password)
     except TypeError:
@@ -76,6 +77,7 @@ def try_encrypt(writer, password: str):
             writer.encrypt(user_pwd=password, owner_pwd=password)
 
 def rotate_page_safe(page, angle):
+    """Fungsi yang menampung 'return'"""
     try:
         page.rotate(angle)
     except Exception:
@@ -95,11 +97,11 @@ def navigate_to(target_menu):
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
 LOGO_PATH = os.path.join("assets", "logo.png")
-# Mengganti '???' dengan '🛠️' atau '🏠' (default icon jika path logo tidak ditemukan)
+# Mengganti '???' dengan '🛠️'
 page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
 st.set_page_config(page_title="KAY App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
-# CSS / Theme (Dipertahankan dan Diperbaiki)
+# CSS / Theme
 st.markdown("""
 <style>
 /* 1. HILANGKAN SEMUA UI SIDEBAR */
@@ -368,6 +370,8 @@ if menu == "PDF Tools":
 
                 if st.button("Proses Reorder/Hapus Halaman", key="process_reorder"):
                     new_order_indices = []
+                    
+                    # Logika utama dibungkus dalam try/except
                     try:
                         # Parsing input string menjadi list index halaman (berbasis 0)
                         input_list = [int(x.strip()) for x in new_order_str.split(',') if x.strip().isdigit()]
@@ -375,31 +379,35 @@ if menu == "PDF Tools":
                         # Cek validitas nomor halaman
                         if any(n < 1 or n > num_pages for n in input_list):
                             st.error(f"Nomor halaman harus antara 1 sampai {num_pages}.")
-                            # TIDAK ADA return DI LUAR FUNGSI: cukup return dalam if/else/try-except
-                            return
+                            # TIDAK ADA return DI LUAR FUNGSI: Eksekusi kode akan berlanjut, 
+                            # tapi blok ini akan dilewati karena terjadi exception atau error di atas.
+                            raise ValueError("Invalid page number in input.")
 
                         # Konversi nomor halaman berbasis 1 menjadi index berbasis 0
                         new_order_indices = [n - 1 for n in input_list]
+                        
+                        # Jika parsing berhasil, lanjutkan pemrosesan PDF
+                        writer = PdfWriter()
+                        for index in new_order_indices:
+                            writer.add_page(reader.pages[index])
+                        
+                        pdf_buffer = io.BytesIO()
+                        writer.write(pdf_buffer)
+                        pdf_buffer.seek(0)
 
-                    except Exception:
-                        st.error("Format urutan halaman tidak valid. Pastikan hanya angka dan koma.")
-                        return
+                        st.download_button(
+                            "✅ Unduh Hasil PDF (Reordered)",
+                            data=pdf_buffer,
+                            file_name="pdf_reordered.pdf",
+                            mime="application/pdf"
+                        )
+                        st.success(f"Pemrosesan selesai. Total halaman baru: {len(new_order_indices)}.")
 
-                    writer = PdfWriter()
-                    for index in new_order_indices:
-                        writer.add_page(reader.pages[index])
-                    
-                    pdf_buffer = io.BytesIO()
-                    writer.write(pdf_buffer)
-                    pdf_buffer.seek(0)
-
-                    st.download_button(
-                        "✅ Unduh Hasil PDF (Reordered)",
-                        data=pdf_buffer,
-                        file_name="pdf_reordered.pdf",
-                        mime="application/pdf"
-                    )
-                    st.success(f"Pemrosesan selesai. Total halaman baru: {len(new_order_indices)}.")
+                    except ValueError:
+                        # Value Error dari raise di atas atau parsing gagal (sudah ditangani st.error di atas)
+                        pass
+                    except Exception as e:
+                        st.error(f"Format urutan halaman tidak valid atau terjadi kesalahan pemrosesan: {e}")
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses PDF: {e}")
@@ -701,10 +709,15 @@ if menu == "PDF Tools":
                     for idx, (_, row) in enumerate(df.iterrows()):
                         cols = [c.lower() for c in df.columns]
                         try:
-                            target = str(row[df.columns[cols.index('filename')]])
-                            pwd = str(row[df.columns[cols.index('password')]])
+                            # Menggunakan kolom yang terdeteksi secara dinamis
+                            target_col = df.columns[cols.index('filename')]
+                            pwd_col = df.columns[cols.index('password')]
+                            target = str(row[target_col])
+                            pwd = str(row[pwd_col])
                         except Exception:
-                            target = None; pwd = None
+                            # Jika kolom tidak ditemukan, lewati (bukan return)
+                            target = None; pwd = None 
+                        
                         if target and pwd:
                             matches = [k for k in pdf_map.keys() if k == target or target in k or k in target]
                             if matches:
@@ -923,60 +936,62 @@ if menu == "File Tools":
             new_format = col2.selectbox("Format Output Baru:", ["Sama seperti Asli", "JPG", "PNG", "WEBP"], index=0)
 
             if st.button("Proses Batch File", key="process_batch_rename"):
+                
+                # Check validation (tanpa menggunakan return)
                 if not new_prefix:
                     st.error("Prefix nama file tidak boleh kosong.")
-                    # TIDAK ADA return DI LUAR FUNGSI: cukup return dalam if/else/try-except
-                    return
+                    # Gunakan st.stop() jika ingin menghentikan eksekusi script Streamlit di sini.
+                else:
+                    # Lanjutkan proses jika validasi berhasil
+                    output_zip = io.BytesIO()
 
-                output_zip = io.BytesIO()
+                    try:
+                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
+                            for i, file in enumerate(uploaded_files, 1):
+                                
+                                # Tentukan format output dan ekstensi
+                                _, original_ext = os.path.splitext(file.name)
+                                
+                                img = Image.open(file)
+                                img_io = io.BytesIO()
+                                
+                                # Tentukan format dan ekstensi output berdasarkan pilihan user
+                                if new_format == "Sama seperti Asli":
+                                    # Tentukan format penyimpanan dari file asli jika bisa, default ke JPEG
+                                    output_format_pil = img.format if img.format else 'JPEG'
+                                    output_ext = original_ext
+                                else:
+                                    output_ext = "." + new_format.lower()
+                                    output_format_pil = new_format.upper()
 
-                try:
-                    with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
-                        for i, file in enumerate(uploaded_files, 1):
-                            
-                            # Tentukan format output dan ekstensi
-                            _, original_ext = os.path.splitext(file.name)
-                            
-                            img = Image.open(file)
-                            img_io = io.BytesIO()
-                            
-                            # Tentukan format dan ekstensi output berdasarkan pilihan user
-                            if new_format == "Sama seperti Asli":
-                                # Tentukan format penyimpanan dari file asli jika bisa, default ke JPEG
-                                output_format_pil = img.format if img.format else 'JPEG'
-                                output_ext = original_ext
-                            else:
-                                output_ext = "." + new_format.lower()
-                                output_format_pil = new_format.upper()
+                                # Tentukan nama file baru (dengan counter 3 digit)
+                                new_filename = f"{new_prefix}_{i:03d}{output_ext}"
+                                
+                                # Proses konversi/penyimpanan
+                                if output_format_pil == 'JPEG' or output_format_pil == 'JPG':
+                                    # Konversi ke RGB untuk JPEG
+                                    img.convert("RGB").save(img_io, format='JPEG', quality=95) 
+                                elif output_format_pil == 'PNG':
+                                    img.save(img_io, format='PNG')
+                                elif output_format_pil == 'WEBP':
+                                    img.save(img_io, format='WEBP')
+                                else:
+                                    img.save(img_io, format=output_format_pil) # Fallback
 
-                            # Tentukan nama file baru (dengan counter 3 digit)
-                            new_filename = f"{new_prefix}_{i:03d}{output_ext}"
-                            
-                            # Proses konversi/penyimpanan
-                            if output_format_pil == 'JPEG' or output_format_pil == 'JPG':
-                                # Konversi ke RGB untuk JPEG
-                                img.convert("RGB").save(img_io, format='JPEG', quality=95) 
-                            elif output_format_pil == 'PNG':
-                                img.save(img_io, format='PNG')
-                            elif output_format_pil == 'WEBP':
-                                img.save(img_io, format='WEBP')
-                            else:
-                                img.save(img_io, format=output_format_pil) # Fallback
+                                img_io.seek(0)
+                                zf.writestr(new_filename, img_io.read())
 
-                            img_io.seek(0)
-                            zf.writestr(new_filename, img_io.read())
+                        st.success(f"✅ Berhasil memproses {len(uploaded_files)} file.")
+                        st.download_button(
+                            "Unduh File ZIP Hasil Batch",
+                            data=output_zip.getvalue(),
+                            file_name="hasil_batch_kay_app.zip",
+                            mime="application/zip"
+                        )
 
-                    st.success(f"✅ Berhasil memproses {len(uploaded_files)} file.")
-                    st.download_button(
-                        "Unduh File ZIP Hasil Batch",
-                        data=output_zip.getvalue(),
-                        file_name="hasil_batch_kay_app.zip",
-                        mime="application/zip"
-                    )
-
-                except Exception as e:
-                    st.error(f"Gagal memproses file: {e}")
-                    traceback.print_exc()
+                    except Exception as e:
+                        st.error(f"Gagal memproses file: {e}")
+                        traceback.print_exc()
 
     # Zip files (Logika Asli)
     if mode == "Zip files":
