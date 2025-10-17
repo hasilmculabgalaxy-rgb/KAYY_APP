@@ -488,11 +488,11 @@ if menu == "PDF Tools":
     else: tool = None
     
 
- # --- FITUR BARU: Terjemahan PDF (Optimasi Struktur) ---
+# --- FITUR BARU: Terjemahan PDF (Optimasi Struktur/Rapi) ---
     if tool == "Translate PDF":
         st.markdown("---")
-        st.markdown("### 🗣️ Terjemahan Teks PDF (dengan Optimasi Struktur Word)")
-        st.info("Fitur ini mengekstrak teks per paragraf, menerjemahkannya dalam blok, dan mencoba mereplikasi struktur paragraf ke Word. **Tata letak kolom/tabel PDF tetap sulit direplikasi.**")
+        st.markdown("### 🗣️ Terjemahan Teks PDF (Optimasi Agar Lebih Rapi)")
+        st.info("Fitur ini mencoba membuat hasil Word lebih rapi dengan menggabungkan baris-baris pendek yang berdekatan (*pre-processing*). **Replikasi tata letak kolom/tabel PDF tetap terbatas.**")
         
         if Translator is None or Document is None:
             if Translator is None: st.error("Library `deep-translator` tidak ditemukan.")
@@ -507,85 +507,142 @@ if menu == "PDF Tools":
 
         if f and st.button("Proses Terjemahan dan Buat Word (.docx)", key="translate_pdf_button"):
             try:
-                # 1. Ekstraksi Teks (Menggunakan Paragraf sebagai Unit)
-                with st.spinner("1. Mengekstrak teks dari PDF per paragraf..."):
+                
+                # --- HELPER: Menggabungkan baris pendek untuk kerapihan ---
+                def preprocess_text_for_layout(text_blocks: list) -> list:
+                    """Menggabungkan baris-baris pendek yang berdekatan, mengasumsikan itu adalah item daftar atau sel tabel."""
+                    processed_blocks = []
+                    current_block = ""
+                    MAX_LINE_LENGTH = 100 # Batas panjang baris agar tidak digabungkan
                     
+                    for block in text_blocks:
+                        if block.strip() == "":
+                            # Baris kosong yang sebenarnya menandakan akhir paragraf
+                            if current_block:
+                                processed_blocks.append(current_block)
+                            processed_blocks.append("") # Jaga pemisah yang jelas
+                            current_block = ""
+                            continue
+                        
+                        # Baris yang sangat pendek (mungkin label/nilai)
+                        if len(block.strip()) < MAX_LINE_LENGTH and not block.strip().endswith('.'):
+                            # Jika baris pendek, coba gabungkan ke block saat ini dengan spasi
+                            if current_block:
+                                current_block += " | " + block.strip() # Gunakan pemisah "|" 
+                            else:
+                                current_block = block.strip()
+                        else:
+                            # Jika baris panjang (paragraf utuh)
+                            if current_block:
+                                processed_blocks.append(current_block)
+                            current_block = block.strip()
+                            processed_blocks.append(current_block)
+                            current_block = ""
+                            
+                    if current_block:
+                        processed_blocks.append(current_block)
+                    
+                    # Hapus spasi ganda yang berlebihan setelah processing
+                    return [b.replace("  ", " ").strip() for b in processed_blocks if b.strip() or b == ""]
+                # --------------------------------------------------------
+
+                # 1. Ekstraksi Teks (Menggunakan Paragraf sebagai Unit)
+                with st.spinner("1. Mengekstrak dan merapikan teks dari PDF..."):
                     raw = f.read()
-                    all_text_paragraphs = []
+                    all_text_lines = []
                     
                     if pdfplumber:
                         with pdfplumber.open(io.BytesIO(raw)) as doc:
                             for p in doc.pages:
-                                # Ekstrak teks halaman, lalu pisahkan berdasarkan baris ganda (asumsi paragraf)
                                 page_text = p.extract_text() or ""
-                                # Tambahkan pemisah halaman yang jelas
-                                all_text_paragraphs.extend([p.strip() for p in page_text.split('\n\n') if p.strip()])
-                                all_text_paragraphs.append("---HALAMAN BARU---\n\n") # Marker untuk halaman baru
+                                # Pisahkan per baris baru tunggal (lebih detail)
+                                all_text_lines.extend(page_text.split('\n'))
+                                all_text_lines.append("---HALAMAN BARU---") # Marker untuk halaman baru
 
                     else: # Fallback ke PyPDF2
                         reader = PdfReader(io.BytesIO(raw))
                         for p in reader.pages:
                             page_text = p.extract_text() or ""
-                            all_text_paragraphs.extend([p.strip() for p in page_text.split('\n\n') if p.strip()])
-                            all_text_paragraphs.append("---HALAMAN BARU---\n\n")
-                            
-                    full_text = "\n\n".join(p for p in all_text_paragraphs if p != "---HALAMAN BARU---\n\n")
+                            all_text_lines.extend(page_text.split('\n'))
+                            all_text_lines.append("---HALAMAN BARU---")
 
-                if not full_text.strip():
+                    # Lakukan Pre-processing untuk menggabungkan baris-baris yang berdekatan
+                    preprocessed_paragraphs = preprocess_text_for_layout(all_text_lines)
+                    
+                    full_text_clean = "\n\n".join(p for p in preprocessed_paragraphs if p != "---HALAMAN BARU---" and p != "")
+
+                if not full_text_clean.strip():
                     st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
                     st.stop()
 
                 # 2. Chunking Berbasis Paragraf dan Terjemahan
                 with st.spinner(f"2. Menerjemahkan teks ke {target_lang} (mempertahankan paragraf)..."):
                     translator = Translator(source=src_lang, target=target_lang)
-                    CHUNK_SIZE = 4500 # Batas lebih aman
+                    CHUNK_SIZE = 4500 # Batas karakter aman
                     
-                    # Gabungkan paragraf menjadi chunks aman
+                    # Gabungkan paragraf yang sudah diproses menjadi chunks aman untuk terjemahan
                     current_chunk = ""
                     text_chunks_for_translation = []
                     
-                    for p in all_text_paragraphs:
-                        if p == "---HALAMAN BARU---\n\n" or len(current_chunk) + len(p) + 2 > CHUNK_SIZE:
-                            # Jika melebihi batas, atau jika itu adalah penanda halaman baru
+                    for p in preprocessed_paragraphs:
+                        # Jika penanda halaman ditemukan
+                        if p == "---HALAMAN BARU---":
                             if current_chunk:
                                 text_chunks_for_translation.append(current_chunk)
+                            text_chunks_for_translation.append("---HALAMAN BARU---")
                             current_chunk = ""
-                            if p == "---HALAMAN BARU---\n\n":
-                                text_chunks_for_translation.append(p) # Sisipkan marker halaman
-                                continue
+                            continue
                         
-                        current_chunk += p + "\n\n"
+                        # Jika paragraf yang diproses kosong atau merupakan spasi antar blok
+                        if not p.strip(): 
+                             if current_chunk:
+                                text_chunks_for_translation.append(current_chunk)
+                             text_chunks_for_translation.append("") # Tambahkan marker baris kosong
+                             current_chunk = ""
+                             continue
+
+                        # Logic chunking: tambahkan paragraf ke chunk saat ini
+                        if len(current_chunk) + len(p) + 4 > CHUNK_SIZE: # +4 untuk pemisah \n\n
+                            if current_chunk:
+                                text_chunks_for_translation.append(current_chunk)
+                            current_chunk = p + "\n\n"
+                        else:
+                            current_chunk += p + "\n\n"
                     
                     if current_chunk:
-                        text_chunks_for_translation.append(current_chunk)
+                        text_chunks_for_translation.append(current_chunk.strip())
                         
                     translated_parts = []
                     prog = st.progress(0)
                     
                     for i, chunk in enumerate(text_chunks_for_translation):
-                        if chunk == "---HALAMAN BARU---\n\n":
-                            translated_parts.append(chunk) # Lewati terjemahan untuk marker halaman
+                        if chunk in ("---HALAMAN BARU---", ""):
+                            translated_parts.append(chunk) 
                         else:
                             if i > 0: time.sleep(0.1) 
-                            translated_parts.append(translator.translate(chunk))
+                            # Terjemahkan, dan ganti pemisah "|" kembali ke format yang rapi
+                            translated = translator.translate(chunk)
+                            translated_parts.append(translated.replace(" | ", " | ").strip()) 
                         
                         prog.progress(int((i + 1) / len(text_chunks_for_translation) * 100))
 
-                    translated_text_combined = "".join(translated_parts)
+                    translated_text_combined = "\n\n".join(translated_parts)
                     prog.empty()
 
-                # 3. Rekonstruksi ke Word
+                # 3. Rekonstruksi ke Word (Memanfaatkan Struktur Lebih Baik)
                 with st.spinner("3. Membuat file Word (.docx) baru..."):
                     doc = Document()
                     
-                    # Memecah berdasarkan penanda halaman dan paragraf
-                    for item in translated_text_combined.split("\n\n"):
-                        if item.strip() == "---HALAMAN BARU---":
-                            # Coba masukkan Page Break (untuk mempertahankan urutan yang kasar)
+                    # Memecah berdasarkan penanda halaman dan paragraf yang jelas
+                    for item in translated_text_combined.split('\n\n'):
+                        item_stripped = item.strip()
+
+                        if item_stripped == "---HALAMAN BARU---":
+                            # Tambahkan Page Break
                             doc.add_page_break()
-                        elif item.strip():
-                            # Tambahkan sebagai paragraf biasa
-                            doc.add_paragraph(item.strip())
+                        elif item_stripped:
+                            # Gunakan paragraf baru
+                            doc.add_paragraph(item_stripped)
                     
                     out = io.BytesIO()
                     doc.save(out)
@@ -595,15 +652,15 @@ if menu == "PDF Tools":
                 st.download_button(
                     f"⬇️ Unduh Hasil Terjemahan ({target_lang}).docx", 
                     data=out.getvalue(), 
-                    file_name=f"translated_to_{target_lang}.docx", 
+                    file_name=f"translated_to_{target_lang}_rapi.docx", 
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
                 
                 st.markdown("---")
-                st.markdown("#### Preview Teks Asli dan Terjemahan")
+                st.markdown("#### Preview Teks Asli (Sudah Dirapikan) dan Terjemahan")
                 col_preview1, col_preview2 = st.columns(2)
                 with col_preview1:
-                    st.text_area("Teks Asli (Ekstraksi)", full_text[:5000], height=300)
+                    st.text_area("Teks Asli (Dirapikan)", "\n\n".join(preprocessed_paragraphs)[:5000], height=300)
                 with col_preview2:
                     st.text_area("Teks Terjemahan", translated_text_combined[:5000], height=300)
 
@@ -1558,5 +1615,6 @@ st.markdown("""
 Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
+
 
 
