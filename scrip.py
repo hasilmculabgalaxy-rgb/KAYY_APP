@@ -100,7 +100,7 @@ def navigate_to(target_menu):
 LOGO_PATH = os.path.join("assets", "logo.png")
 # Menggunakan emoji toolbox 🛠️ sebagai fallback ikon
 page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
-st.set_page_config(page_title="KAY App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Master App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
 # CSS / Theme
 st.markdown("""
@@ -215,10 +215,10 @@ with header_col1:
         try:
             st.image(LOGO_PATH, width=100)
         except Exception:
-            st.write("KAY App")
+            st.write("Master - App")
 
 with header_col2:
-    st.title("KAY App – Tools MCU")
+    st.title("Master - App – Tools MCU")
     st.markdown("Aplikasi serbaguna untuk pengolahan dokumen, PDF, gambar, dan data MCU — UI elegan + fungsi lengkap.")
 
 st.markdown("---")
@@ -1349,7 +1349,7 @@ if menu == "MCU Tools":
 # -------------- Tentang (Diperbarui) --------------
 if menu == "Tentang":
     add_back_to_dashboard_button() 
-    st.subheader("ℹ️ Tentang KAY App – Tools MCU")
+    st.subheader("ℹ️ Tentang Master App – Tools MCU")
     st.markdown("""
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
     - 📸 **Kompres Foto & Gambar**
@@ -1373,6 +1373,7 @@ if menu == "Tentang":
 st.markdown("""
 <hr style="border: none; border-top: 1px solid #cfe2ff; margin-top: 1.5rem;">
 <p style="text-align: right; color: #a0a0a0; font-size: 0.8rem;">
-Developed by KAY - Final App 2024
+Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
+
