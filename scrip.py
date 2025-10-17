@@ -1,8 +1,8 @@
 """
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
 - **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto.
-- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, **Organise MCU by Excel (Fitur Baru dari User)**.
-- **TAMPILAN BARU:** Mengganti semua placeholder ikon dengan emoji/ikon yang relevan dan memperbarui CSS untuk tampilan yang lebih modern.
+- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, Organise MCU by Excel.
+- **FITUR DIPERBARUI:** Dashboard Analisis Data MCU Massal.
 """
 
 import os
@@ -61,7 +61,8 @@ def make_zip_from_map(bytes_map: dict) -> bytes:
 
 def df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     out = io.BytesIO()
-    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+    # Menggunakan openpyxl sebagai engine
+    with pd.ExcelWriter(out, engine="openpyxl") as writer: 
         df.to_excel(writer, index=False)
     out.seek(0)
     return out.getvalue()
@@ -1106,10 +1107,10 @@ if menu == "MCU Tools":
     st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
     
     mcu_tool = st.selectbox("Pilih Fitur MCU", [
-        "📂 Organise by Excel (Original Logic) - Fitur Baru", # FITUR BARU DISINI
-        "📊 Dashboard Analisis Data MCU (Excel)", 
+        "📂 Organise by Excel (Original Logic) - Fitur Baru", 
+        "📊 Dashboard Analisis Data MCU (Excel) - Diperbarui", # NAMA DIPERBARUI
         "📝 Konversi Laporan MCU (PDF) ke Data", 
-    ])
+    ], index=1) # Set default ke fitur yang baru diperbarui
     
     # === LOGIC FOR NEW FEATURE: Organise by Excel (Original Logic) ===
     if mcu_tool == "📂 Organise by Excel (Original Logic) - Fitur Baru":
@@ -1188,39 +1189,152 @@ if menu == "MCU Tools":
                     
             except Exception:
                 st.error(f"Terjadi kesalahan saat memproses data. Cek format Excel Anda: {traceback.format_exc()}")
-    # === END OF NEW FEATURE LOGIC ===
+    # === END OF ORGANISE LOGIC ===
 
-
-    if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel)":
+    # === LOGIC FOR ENHANCED DASHBOARD ANALISIS ===
+    if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel) - Diperbarui":
         st.markdown("---")
-        st.subheader("Visualisasi & Analisis Hasil MCU Massal")
-        st.info("Unggah file Excel yang berisi data hasil MCU.")
+        st.subheader("📊 Dashboard Analisis Hasil MCU Massal (Diperbarui)")
+        st.markdown("Unggah data hasil MCU (Excel/CSV) untuk analisis cepat, visualisasi, dan filter data.")
         
-        excel_up = st.file_uploader("Unggah Excel Data MCU:", type=["xlsx", "csv"], key="mcu_excel_up")
-        
-        if excel_up:
-            try:
-                if excel_up.name.lower().endswith(".csv"):
-                    df = pd.read_csv(io.BytesIO(excel_up.read()))
-                else:
-                    df = pd.read_excel(io.BytesIO(excel_up.read()))
+        uploaded_file = st.file_uploader(
+            "Unggah file Data MCU (Excel/CSV):",
+            type=["xlsx", "csv"],
+            key="mcu_data_uploader_new"
+        )
 
-                st.success(f"Data berhasil dimuat. Total {len(df)} baris.")
-                st.dataframe(df.head())
+        if uploaded_file:
+            try:
+                # 1. Baca File
+                with st.spinner("Membaca data dan normalisasi kolom..."):
+                    if uploaded_file.name.lower().endswith('.csv'):
+                        df = pd.read_csv(io.BytesIO(uploaded_file.read()))
+                    else:
+                        df = pd.read_excel(io.BytesIO(uploaded_file.read()))
+    
+                    st.success(f"Data berhasil dimuat. Total Baris: {len(df)}")
+                    
+                    # Normalisasi kolom: Hapus karakter non-alfanumerik/underscore dan buat lowercase
+                    df.columns = df.columns.str.replace('[^A-Za-z0-9_]+', '', regex=True).str.lower()
                 
-                # Sederhana, buat chart dummy
-                st.markdown("### Preview Analisis Sederhana")
-                if 'Usia' in df.columns:
-                    st.bar_chart(df['Usia'].value_counts())
-                elif 'Gender' in df.columns:
-                    st.write("Distribusi Gender:")
-                    st.dataframe(df['Gender'].value_counts().reset_index())
+                st.markdown("#### Preview Data (5 Baris Teratas)")
+                st.dataframe(df.head(), use_container_width=True)
+
+                st.markdown("---")
+                st.markdown("### 📈 Visualisasi & Analisis Cepat Status")
+                
+                # 2. Analisis Status Kesehatan
+                # Cari kolom yang mengandung 'status', 'fit', atau 'hasil'
+                status_cols = [col for col in df.columns if 'status' in col or 'fit' in col or 'hasil' in col]
+                
+                if status_cols:
+                    col1, col2 = st.columns([2, 1])
+                    with col1:
+                        status_col = st.selectbox(
+                            "Pilih Kolom Utama Status/Hasil:", 
+                            status_cols, 
+                            index=0, 
+                            key="select_status_col",
+                            help="Pilih kolom yang berisi status akhir MCU (misal: fit, unfit)."
+                        )
+                    
+                    st.markdown(f"##### 1. Distribusi Status Kesehatan (`{status_col}`)")
+                    
+                    # Data Cleaning & Aggregation
+                    df[status_col] = df[status_col].astype(str).str.strip().str.upper().fillna("TIDAK DIKETAHUI")
+                    status_counts = df[status_col].value_counts().reset_index()
+                    status_counts.columns = [status_col, 'Jumlah']
+                    status_counts = status_counts.sort_values(by='Jumlah', ascending=False)
+                    
+                    if len(status_counts) > 0:
+                        st.dataframe(status_counts, use_container_width=True)
+                        st.bar_chart(status_counts.set_index(status_col))
+                        
+                        # Download Data Agregat
+                        excel_bytes = df_to_excel_bytes(status_counts)
+                        st.download_button(
+                            "⬇️ Unduh Data Agregasi Status (Excel)", 
+                            data=excel_bytes, 
+                            file_name="status_agregat.xlsx", 
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                    else:
+                        st.info("Kolom status/hasil tidak memiliki data unik yang valid.")
                 else:
-                    st.info("Tidak ada kolom data yang mudah dianalisis untuk preview.")
+                    st.warning("Kolom yang mengandung kata 'status', 'fit', atau 'hasil' tidak ditemukan untuk Analisis Cepat Status. Cek penamaan kolom Anda.")
+
+                st.markdown("---")
+                
+                # 3. Analisis Kategorikal/Filter
+                st.markdown("### 🔍 Filter dan Analisis Data Kategorikal")
+                
+                # Pilih kolom kategorikal (object type) dengan jumlah unik > 1 dan <= 50
+                filter_cols = [
+                    col for col in df.columns 
+                    if df[col].dtype == 'object' and df[col].nunique() > 1 and df[col].nunique() <= 50
+                ]
+                
+                if filter_cols:
+                    col_to_analyze = st.selectbox(
+                        "Pilih Kolom Kategorikal (misal: Departemen, Jabatan, Gender):", 
+                        filter_cols,
+                        key="select_filter_col"
+                    )
+                    
+                    st.write(f"##### Distribusi Nilai dalam Kolom `{col_to_analyze}`")
+                    
+                    # Data Cleaning & Aggregation
+                    df[col_to_analyze] = df[col_to_analyze].astype(str).str.strip().str.upper().fillna("TIDAK DIKETAHUI")
+                    cat_counts = df[col_to_analyze].value_counts().reset_index()
+                    cat_counts.columns = [col_to_analyze, 'Jumlah']
+                    
+                    st.dataframe(cat_counts, use_container_width=True)
+                    st.bar_chart(cat_counts.set_index(col_to_analyze))
+                    
+                    # Download Agregat Kategorikal
+                    excel_bytes_cat = df_to_excel_bytes(cat_counts)
+                    st.download_button(
+                        f"⬇️ Unduh Data Agregasi {col_to_analyze} (Excel)", 
+                        data=excel_bytes_cat, 
+                        file_name=f"{col_to_analyze.lower()}_agregat.xlsx", 
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                    
+                    # Filter Data Mentah
+                    st.markdown("---")
+                    st.markdown("##### Tampilkan Data Mentah Terfilter")
+                    
+                    filter_values = ["-- Pilih Nilai untuk Filter Data --"] + list(df[col_to_analyze].unique())
+                    selected_value = st.selectbox(
+                        f"Pilih Nilai `{col_to_analyze}` untuk Menampilkan Data:", 
+                        filter_values,
+                        key="select_cat_value"
+                    )
+                    
+                    if selected_value != "-- Pilih Nilai untuk Filter Data --":
+                        df_filtered = df[df[col_to_analyze] == selected_value]
+                        st.info(f"Menampilkan **{len(df_filtered)}** baris data untuk `{selected_value}`.")
+                        st.dataframe(df_filtered, use_container_width=True)
+                        
+                        # Download Filtered Data Mentah
+                        excel_bytes_filtered = df_to_excel_bytes(df_filtered)
+                        st.download_button(
+                            f"⬇️ Unduh Data Filtered ({selected_value}) (Excel)", 
+                            data=excel_bytes_filtered, 
+                            file_name=f"data_filtered_{selected_value.lower().replace(' ', '_')}.xlsx", 
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                        
+                    else:
+                        st.info("Pilih nilai di atas untuk menampilkan dan mengunduh data mentah yang terfilter.")
+                else:
+                    st.info("Tidak ada kolom kategorikal yang cocok (object type dengan 2-50 nilai unik) untuk analisis mendalam. Pastikan kolom seperti 'Departemen' atau 'Gender' bertipe teks.")
 
             except Exception as e:
-                st.error(f"Gagal membaca file: {e}")
+                st.error(f"Gagal memuat atau memproses file. Pastikan file Excel/CSV Anda valid: {e}")
+                traceback.print_exc()
 
+    # === LOGIC FOR PDF TO DATA (Placeholder) ===
     if mcu_tool == "📝 Konversi Laporan MCU (PDF) ke Data":
         st.markdown("---")
         st.subheader("Ekstraksi Data dari Laporan MCU PDF")
