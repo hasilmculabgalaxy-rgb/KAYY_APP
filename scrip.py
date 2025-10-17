@@ -2,7 +2,7 @@
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBAHARUI & FIX SYNTAX ERROR
 - Memperbaiki SyntaxError: 'return' outside function.
 - Menambahkan FITUR BARU: Batch Rename PDF dan Gambar berdasarkan Excel.
-- REVISI (Dari User): Menghilangkan duplikasi fitur dan merapikan menu.
+- REVISI (Dari User): Menghilangkan duplikasi fitur, merapikan menu, dan perbaikan UI.
 """
 
 import os
@@ -20,23 +20,26 @@ from PIL import Image
 # PDF libs
 PdfReader = PdfWriter = None
 try:
+    # PyPDF2 adalah library untuk manipulasi PDF dasar
     from PyPDF2 import PdfReader, PdfWriter
 except Exception:
     pass
 
 pdfplumber = None
 try:
+    # pdfplumber untuk ekstraksi teks dan tabel
     import pdfplumber
 except Exception:
     pass
 
 Document = None
 try:
+    # python-docx untuk konversi ke Word
     from docx import Document
 except Exception:
     pass
 
-# pdf2image: try both convert_from_bytes and convert_from_path availability
+# pdf2image: cek ketersediaan convert_from_bytes dan convert_from_path
 PDF2IMAGE_AVAILABLE = False
 convert_from_bytes = convert_from_path = None
 try:
@@ -48,10 +51,11 @@ except Exception:
         PDF2IMAGE_AVAILABLE = True
         convert_from_bytes = None
     except Exception:
-        pass # convert_from_path and convert_from_bytes remain None
+        pass # convert_from_path dan convert_from_bytes tetap None
 
 # ----------------- Helpers -----------------
 def make_zip_from_map(bytes_map: dict) -> bytes:
+    """Membuat file ZIP dari map nama file ke konten bytes."""
     b = io.BytesIO()
     with zipfile.ZipFile(b, "w") as z:
         for name, data in bytes_map.items():
@@ -60,6 +64,7 @@ def make_zip_from_map(bytes_map: dict) -> bytes:
     return b.getvalue()
 
 def df_to_excel_bytes(df: pd.DataFrame) -> bytes:
+    """Mengubah Pandas DataFrame menjadi bytes Excel."""
     out = io.BytesIO()
     with pd.ExcelWriter(out, engine="openpyxl") as writer:
         df.to_excel(writer, index=False)
@@ -67,7 +72,7 @@ def df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     return out.getvalue()
 
 def try_encrypt(writer, password: str):
-    """Fungsi untuk enkripsi PDF, menampung try/except"""
+    """Fungsi untuk enkripsi PDF, menampung try/except compatibility."""
     try:
         writer.encrypt(password)
     except TypeError:
@@ -83,6 +88,7 @@ def rotate_page_safe(page, angle):
     try:
         page.rotate(angle)
     except Exception:
+        # Fallback for older PyPDF2 versions
         try:
             from PyPDF2.generic import NameObject, NumberObject
             page.__setitem__(NameObject("/Rotate"), NumberObject(angle))
@@ -95,11 +101,18 @@ def navigate_to(target_menu):
     try:
         st.rerun() 
     except AttributeError:
+        # Fallback for older Streamlit versions
         st.experimental_rerun()
 
-# ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
+def add_back_to_dashboard_button():
+    """Menambahkan tombol 'Kembali ke Dashboard' dengan ikon."""
+    # PERBAIKAN: Menggunakan ikon 'house' untuk UI yang lebih baik.
+    if st.button("Kembali ke Dashboard", key="back_to_dash", icon="house"):
+        navigate_to("Dashboard")
+    st.markdown("---")
+
+# ----------------- Streamlit config & CSS -----------------
 LOGO_PATH = os.path.join("assets", "logo.png")
-# Menggunakan ikon palet untuk memastikan ikon terlihat di semua sistem
 page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "???" 
 st.set_page_config(page_title="KAY App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
@@ -197,14 +210,6 @@ if "menu_selection" not in st.session_state:
     
 menu = st.session_state.menu_selection
 
-# ----------------- Fungsi Tombol Kembali (Perapihan Ikon) -----------------
-def add_back_to_dashboard_button():
-    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur dengan ikon rumah."""
-    # PERUBAHAN 1: Ganti "?? Kembali ke Dashboard" menjadi "Kembali ke Dashboard" dengan ikon
-    if st.button("Kembali ke Dashboard", key="back_to_dash", icon="house"):
-        navigate_to("Dashboard")
-    st.markdown("---")
-
 # ----------------- Halaman Header (Selalu ditampilkan) -----------------
 if os.path.exists(LOGO_PATH):
     try:
@@ -217,7 +222,7 @@ st.markdown("---")
 
 
 # -----------------------------------------------------------------------------
-# ----------------- FUNGSI UTAMA (Diperbarui untuk fitur baru) -----------------
+# ----------------- FUNGSI UTAMA -----------------
 # -----------------------------------------------------------------------------
 
 # -------------- Dashboard (Menu Utama) --------------
@@ -229,14 +234,12 @@ if menu == "Dashboard":
 
     # Kompres Foto
     with cols1[0]:
-        # Tambahkan notifikasi "Baru" untuk rename
         st.markdown('<div class="feature-card"><b>Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, **Batch Rename Sesuai Excel (Baru)**.</div>', unsafe_allow_html=True)
         if st.button("Buka Kompres Foto", key="dash_foto"):
             navigate_to("Kompres Foto")
 
     # PDF Tools
     with cols1[1]:
-        # Tambahkan notifikasi "Baru" untuk rename
         st.markdown('<div class="feature-card"><b>PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & **Batch Rename Sesuai Excel (Baru)**.</div>', unsafe_allow_html=True)
         if st.button("Buka PDF Tools", key="dash_pdf"):
             navigate_to("PDF Tools")
@@ -253,7 +256,7 @@ if menu == "Dashboard":
     
     # File Tools
     with cols2[0]:
-        # PERUBAHAN 2: Hapus referensi Batch Rename dari deskripsi
+        # PERBAIKAN: Hapus referensi Batch Rename dari deskripsi untuk menghindari duplikasi
         st.markdown('<div class="feature-card"><b>File Tools</b><br>Zip/unzip, konversi dasar file umum (BUKAN PDF/Gambar).</div>', unsafe_allow_html=True)
         if st.button("Buka File Tools", key="dash_file"):
             navigate_to("File Tools")
@@ -281,7 +284,7 @@ if menu == "Kompres Foto":
     img_tool = st.selectbox("Pilih Fitur Gambar", [
         "Kompres Foto (Batch)", 
         "?? Batch Rename/Format Gambar (Sequential)", 
-        "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)" # FITUR BARU: Batch Rename Gambar by Excel
+        "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)"
         ])
 
     if img_tool == "Kompres Foto (Batch)":
@@ -358,7 +361,7 @@ if menu == "Kompres Foto":
                         st.download_button("Unduh File ZIP Hasil Batch", data=output_zip.getvalue(), file_name="hasil_batch_gambar.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
-    # --- FITUR BARU 1: Batch Rename Gambar Sesuai Excel ---
+    # --- FITUR Batch Rename Gambar Sesuai Excel ---
     elif img_tool == "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)":
         st.markdown("---")
         st.subheader("?? Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel")
@@ -417,20 +420,19 @@ if menu == "Kompres Foto":
                 st.error(f"Terjadi kesalahan pemrosesan: {e}")
                 traceback.print_exc()
 
-# -------------- PDF Tools (Diperbarui Menu dan Fitur) --------------
+# -------------- PDF Tools (Menu Diperbarui & Konsolidasi Fitur) --------------
 if menu == "PDF Tools":
     add_back_to_dashboard_button() 
     st.subheader("PDF Tools")
 
-    # PERUBAHAN 3A: Menu yang lebih terstruktur. Menghilangkan "??? Utility PDF" dan memindah opsi ke sini.
+    # PERBAIKAN: Menu yang lebih terstruktur. Menghilangkan "??? Utility PDF" dan memindah opsi ke sini.
     pdf_options = [
         "--- Pilih Tools ---",
         "?? Gabung PDF",
         "?? Pisah PDF", 
-        "?? Reorder/Hapus Halaman PDF", 
+        "?? Reorder/Hapus Halaman PDF", # Fitur ini sudah mencakup Hapus Halaman
         "?? Batch Rename PDF (Sequential)", 
-        "?? Batch Rename PDF Sesuai Excel (Baru)", # Nama disingkat
-        # Utility PDF options dipindahkan dan "Hapus Halaman" dihilangkan
+        "?? Batch Rename PDF Sesuai Excel (Baru)",
         "?? Rotate PDF", 
         "?? Kompres PDF", 
         "?? Watermark PDF", 
@@ -444,7 +446,7 @@ if menu == "PDF Tools":
     
     tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
 
-    # PERUBAHAN 3B: Mapping disesuaikan dengan menu baru
+    # Mapping disesuaikan dengan menu baru
     if tool_select == "--- Pilih Tools ---": tool = None
     elif tool_select == "?? Gabung PDF": tool = "Gabung PDF" 
     elif tool_select == "?? Pisah PDF": tool = "Pisah PDF" 
@@ -466,7 +468,7 @@ if menu == "PDF Tools":
     elif tool_select == "?? Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"])
     else: tool = None
 
-    # --- FITUR BARU 2: Batch Rename PDF Sesuai Excel ---
+    # --- FITUR Batch Rename PDF Sesuai Excel ---
     if tool == "Batch Rename PDF Excel":
         st.markdown("---")
         st.subheader("?? Ganti Nama File PDF Berdasarkan Excel")
@@ -545,7 +547,7 @@ if menu == "PDF Tools":
                         st.download_button("Unduh File ZIP Hasil Rename", data=output_zip.getvalue(), file_name="pdf_renamed.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
-    # --- LOGIKA FITUR PDF LAINNYA (tidak diubah) ---
+    # --- LOGIKA FITUR PDF LAINNYA ---
     if tool == "Reorder PDF":
         st.markdown("---")
         st.subheader("?? Reorder atau Hapus Halaman PDF")
@@ -572,13 +574,14 @@ if menu == "PDF Tools":
                     new_order_indices = []
                     
                     try:
+                        # Membersihkan dan memvalidasi input
                         input_list = [int(x.strip()) for x in new_order_str.split(',') if x.strip().isdigit()]
                         
                         if any(n < 1 or n > num_pages for n in input_list):
                             st.error(f"Nomor halaman harus antara 1 sampai {num_pages}.")
                             raise ValueError("Invalid page number in input.")
 
-                        new_order_indices = [n - 1 for n in input_list]
+                        new_order_indices = [n - 1 for n in input_list] # Konversi ke indeks (0-based)
                         
                         writer = PdfWriter()
                         for index in new_order_indices:
@@ -638,9 +641,8 @@ if menu == "PDF Tools":
                 st.download_button("Download pages.zip", zipb, file_name="pages.zip", mime="application/zip")
             except Exception:
                 st.error(traceback.format_exc())
-
-    # PERUBAHAN 4: Menghapus fitur duplikat 'Hapus Halaman' yang sederhana.
-    # Blok 'if tool == "Hapus Halaman":' telah dihapus.
+    
+    # Fitur Hapus Halaman Dihilangkan karena duplikat dengan Reorder PDF
     
     if tool == "Rotate PDF":
         st.markdown("---")
@@ -708,7 +710,7 @@ if menu == "PDF Tools":
         if f and st.button("Convert to images"):
             try:
                 if not PDF2IMAGE_AVAILABLE:
-                    st.error("pdf2image not installed or poppler missing.")
+                    st.error("pdf2image not installed or poppler missing. (Lihat bagian 'Tentang' untuk instalasi).")
                 else:
                     with st.spinner("Converting..."):
                         pdf_bytes = f.read()
@@ -781,10 +783,18 @@ if menu == "PDF Tools":
                         tables = []
                         with pdfplumber.open(io.BytesIO(f.read())) as doc:
                             for page in doc.pages:
+                                # Mencoba ekstraksi tabel standar
                                 for tbl in page.extract_tables():
-                                    if tbl and len(tbl) > 1: # Menghilangkan baris header yang mungkin diduplikasi
-                                        df = pd.DataFrame(tbl[1:], columns=tbl[0])
-                                        tables.append(df)
+                                    if tbl and len(tbl) > 0: 
+                                        # Asumsi baris pertama adalah header
+                                        try:
+                                            df = pd.DataFrame(tbl[1:], columns=tbl[0])
+                                            tables.append(df)
+                                        except Exception:
+                                            # Jika gagal membuat DF dengan header, gunakan semua baris tanpa header
+                                            df = pd.DataFrame(tbl)
+                                            tables.append(df)
+
                         if tables:
                             df_all = pd.concat(tables, ignore_index=True)
                             st.dataframe(df_all.head())
@@ -885,6 +895,7 @@ if menu == "PDF Tools":
                         cols = [c.lower() for c in df.columns]
                         try:
                             # Safely extract column names
+                            # Mencari kolom 'filename' dan 'password' (case-insensitive)
                             target_col = df.columns[cols.index('filename')]
                             pwd_col = df.columns[cols.index('password')]
                             target = str(row[target_col]).strip()
@@ -893,7 +904,6 @@ if menu == "PDF Tools":
                             target = None; pwd = None
                         
                         if target and pwd:
-                            # Cek yang exact match dulu
                             matches = [k for k in pdf_map.keys() if k == target]
                             if matches:
                                 key = matches[0]
@@ -957,10 +967,21 @@ if menu == "PDF Tools":
             except Exception:
                 st.error(traceback.format_exc())
 
-# -------------- MCU Tools --------------
-# ... (Logika MCU Tools)
+# -------------- MCU Tools (Belum Diimplementasikan di skrip ini) --------------
+if menu == "MCU Tools":
+    add_back_to_dashboard_button()
+    st.header("MCU Tools (Coming Soon)")
+    st.info("Logika dan fitur spesifik MCU belum dimasukkan dalam skrip ini. Silakan tambahkan kode pemrosesan Excel, PDF, dan analisis data di sini.")
 
-# -------------- Tentang (Diperbarui) --------------
+
+# -------------- File Tools (Belum Diimplementasikan di skrip ini) --------------
+if menu == "File Tools":
+    add_back_to_dashboard_button()
+    st.header("File Tools (Dasar)")
+    st.info("Logika untuk Zip/Unzip dan konversi file umum lainnya belum dimasukkan dalam skrip ini.")
+
+
+# -------------- Tentang -----------------
 if menu == "Tentang":
     add_back_to_dashboard_button() 
     st.subheader("Tentang KAY App – Tools MCU")
@@ -968,17 +989,20 @@ if menu == "Tentang":
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
     - Kompres foto & gambar
     - Pengelolaan dokumen PDF (gabung, pisah, proteksi, ekstraksi, **Reorder/Hapus Halaman**, **Batch Rename PDF**)
-    - Analisis & pengolahan hasil Medical Check Up (MCU) (**Dashboard Analisis Data**)
-    - Manajemen file & konversi dasar (Zip/unzip, konversi file umum, **Batch Rename/Format Gambar**, **Batch Rename PDF**)
+    - Analisis & pengolahan hasil Medical Check Up (MCU) (di menu terpisah)
+    - Manajemen file & konversi dasar (di menu terpisah)
 
-    Beberapa fitur memerlukan library tambahan (instal di environment Anda):
-    - `PyPDF2` (Dasar PDF)
-    - `pdfplumber` untuk ekstraksi tabel teks: `pip install pdfplumber`
-    - `python-docx` untuk menghasilkan .docx: `pip install python-docx`
-    - `pdf2image` + poppler untuk konversi PDF->Gambar / Preview gambar: `pip install pdf2image`
-    - `pandas` & `openpyxl` untuk Analisis MCU dan **Batch Rename by Excel**: `pip install pandas openpyxl`
+    ### ? Dependensi Library (Wajib Install)
+    Untuk memastikan semua fitur berfungsi, jalankan perintah ini di terminal Anda:
+    ```bash
+    pip install streamlit pandas openpyxl Pillow PyPDF2 pdfplumber python-docx
+    ```
+    
+    ### ? Catatan Khusus
+    - **PDF -> Gambar (pdf2image):** Fitur ini juga memerlukan instalasi **Poppler** pada sistem operasi server Anda.
+    - **Semua Fitur:** Data diproses secara **lokal** di server tempat Streamlit dijalankan, menjaga privasi data Anda.
     """)
-    st.info("Data diproses di server tempat Streamlit dijalankan. Untuk mengaktifkan semua fitur, pasang dependensi yang diperlukan.")
+    st.info("Aplikasi ini dibuat dengan Python dan Streamlit.")
 
 # ----------------- Footer -----------------
 st.markdown("""
