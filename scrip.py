@@ -50,6 +50,14 @@ except Exception:
     except Exception:
         pass # convert_from_path and convert_from_bytes remain None
 
+# New imports for translation
+Translator = None
+try:
+    from deep_translator import GoogleTranslator
+    Translator = GoogleTranslator
+except Exception:
+    pass # Peringatan akan ditampilkan di fitur Translate PDF jika gagal impor
+
 # ----------------- Helpers -----------------
 def make_zip_from_map(bytes_map: dict) -> bytes:
     b = io.BytesIO()
@@ -453,6 +461,7 @@ if menu == "PDF Tools":
         "🖼️ Image -> PDF", 
         "📸 PDF -> Image", 
         "🔍 Ekstraksi Teks/Tabel", 
+        "🗣️ Terjemahan PDF ke Bahasa Lain (Fitur Baru)", # <-- FITUR BARU TRANSLATE
         "🔁 Konversi PDF", 
         "🔒 Proteksi PDF", 
         "🛠️ Utility PDF", 
@@ -473,10 +482,93 @@ if menu == "PDF Tools":
     elif tool_select == "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
     elif tool_select == "📸 PDF -> Image": tool = "PDF -> Image" 
     elif tool_select == "🖼️ Image -> PDF": tool = "Image -> PDF" 
+    elif tool_select == "🗣️ Terjemahan PDF ke Bahasa Lain (Fitur Baru)": tool = "Translate PDF" # <-- MAPPING TRANSLATE
     else: tool = None
     
 
-    # --- FITUR BARU 2: Batch Rename PDF Sesuai Excel ---
+    # --- FITUR BARU: Terjemahan PDF ---
+    if tool == "Translate PDF":
+        st.markdown("---")
+        st.markdown("### 🗣️ Terjemahan Teks PDF")
+        st.info("Fitur ini mengekstrak semua teks, menerjemahkannya, dan menghasilkan file Word (DOCX) baru dengan teks hasil terjemahan.")
+        
+        if Translator is None:
+            st.error("Library `deep_translator` tidak ditemukan. Silakan install: `pip install deep-translator`")
+        elif Document is None:
+             st.error("Library `python-docx` tidak ditemukan (untuk output Word). Silakan install: `pip install python-docx`")
+        else:
+            f = st.file_uploader("Unggah PDF untuk Diterjemahkan:", type="pdf", key="translate_pdf_uploader")
+            
+            col1, col2 = st.columns(2)
+            src_lang = col1.text_input("Bahasa Sumber (ISO Code, ex: id)", value="auto", help="Ketik 'auto' jika tidak yakin.")
+            target_lang = col2.text_input("Bahasa Tujuan (ISO Code, ex: en, ja, fr)", value="en")
+
+            if f and st.button("Proses Terjemahan dan Buat Word (.docx)"):
+                try:
+                    with st.spinner("1. Mengekstrak teks dari PDF..."):
+                        # Ekstraksi Teks (menggunakan pdfplumber atau PyPDF2)
+                        text_blocks = []
+                        raw = f.read()
+                        if pdfplumber:
+                            with pdfplumber.open(io.BytesIO(raw)) as doc:
+                                for p in doc.pages:
+                                    text_blocks.append((p.extract_text() or "") + "\n\n")
+                        else:
+                            if PdfReader is None:
+                                st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                                return
+                            reader = PdfReader(io.BytesIO(raw))
+                            for p in reader.pages:
+                                text_blocks.append((p.extract_text() or "") + "\n\n")
+                        
+                        full_text = "".join(text_blocks)
+                        
+                    if not full_text.strip():
+                        st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
+                        return
+
+                    with st.spinner(f"2. Menerjemahkan teks ke {target_lang}..."):
+                        # Terjemahan
+                        translator = Translator(source=src_lang, target=target_lang)
+                        # Terjemahan dalam satu blok penuh
+                        translated_text = translator.translate(full_text)
+                        
+                    with st.spinner("3. Membuat file Word (.docx) baru..."):
+                        # Rekonstruksi ke Word (untuk mempertahankan struktur paragraf dasar)
+                        doc = Document()
+                        
+                        # Memecah teks diterjemahkan per baris untuk paragraf baru
+                        # Menangani baris kosong yang mungkin muncul
+                        for paragraph in translated_text.split('\n\n'):
+                            if paragraph.strip():
+                                doc.add_paragraph(paragraph)
+                        
+                        out = io.BytesIO()
+                        doc.save(out)
+                        out.seek(0)
+                        
+                    st.success("✅ Terjemahan berhasil! Unduh file Word hasil terjemahan.")
+                    st.download_button(
+                        f"⬇️ Unduh Hasil Terjemahan ({target_lang}).docx", 
+                        data=out.getvalue(), 
+                        file_name=f"translated_to_{target_lang}.docx", 
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                    
+                    st.markdown("---")
+                    st.markdown("#### Preview Teks Asli dan Terjemahan")
+                    col_preview1, col_preview2 = st.columns(2)
+                    with col_preview1:
+                        # Batasi preview teks agar tidak terlalu panjang
+                        st.text_area("Teks Asli (Ekstraksi)", full_text[:5000], height=300)
+                    with col_preview2:
+                        st.text_area("Teks Terjemahan", translated_text[:5000], height=300)
+
+                except Exception as e:
+                    st.error(f"Terjadi kesalahan saat terjemahan. Cek kode bahasa (ISO 639-1) dan pastikan teks dapat diekstrak. Error: {e}")
+                    traceback.print_exc()
+
+    # --- FITUR Batch Rename PDF Sesuai Excel ---
     if tool == "Batch Rename PDF Excel":
         st.markdown("---")
         st.markdown("### 📝 Ganti Nama File PDF Berdasarkan Excel") 
@@ -1093,6 +1185,7 @@ if menu == "File Tools":
             "pdfplumber": pdfplumber is not None,
             "python-docx (Document)": Document is not None,
             "pdf2image (convert_from_path/bytes)": PDF2IMAGE_AVAILABLE,
+            "deep_translator (GoogleTranslator)": Translator is not None, # <-- UPDATE STATUS
         }
 
         for name, is_available in libs.items():
@@ -1265,7 +1358,7 @@ if menu == "MCU Tools":
 
                 st.markdown("---")
                 
-                # 3. Analisis Kategorikal/Filter
+                # 3. Analisis Categorical/Filter
                 st.markdown("### 🔍 Filter dan Analisis Data Kategorikal")
                 
                 # Pilih kolom kategorikal (object type) dengan jumlah unik > 1 dan <= 50
@@ -1353,7 +1446,7 @@ if menu == "Tentang":
     st.markdown("""
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
     - 📸 **Kompres Foto & Gambar**
-    - 📎 **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename)
+    - 📎 **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename, **Terjemahan**)
     - 🩺 **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data, **Organise by Excel**)
     - 📁 **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
 
@@ -1364,6 +1457,7 @@ if menu == "Tentang":
     - `PyPDF2` (Dasar PDF)
     - `pdfplumber` untuk ekstraksi tabel teks: `pip install pdfplumber`
     - `python-docx` untuk menghasilkan .docx: `pip install python-docx`
+    - `deep-translator` untuk fitur terjemahan PDF: `pip install deep-translator`
     - `pdf2image` + poppler untuk konversi PDF->Gambar / Preview gambar: `pip install pdf2image`
     - `pandas` & `openpyxl` untuk Analisis MCU dan Batch Rename by Excel: `pip install pandas openpyxl`
     """)
