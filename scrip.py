@@ -488,7 +488,7 @@ if menu == "PDF Tools":
     else: tool = None
     
 
-    # --- FITUR BARU: Terjemahan PDF ---
+ # --- FITUR BARU: Terjemahan PDF ---
     if tool == "Translate PDF":
         st.markdown("---")
         st.markdown("### 🗣️ Terjemahan Teks PDF")
@@ -514,11 +514,12 @@ if menu == "PDF Tools":
                         if pdfplumber:
                             with pdfplumber.open(io.BytesIO(raw)) as doc:
                                 for p in doc.pages:
-                                    text_blocks.append((p.extract_text() or "") + "\n\n")
+                                    # Tambahkan pemisah baris agar paragraf tetap jelas
+                                    text_blocks.append((p.extract_text() or "") + "\n\n") 
                         else:
                             if PdfReader is None:
                                 st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                                st.stop() # Mengganti 'return'
+                                st.stop()
                             reader = PdfReader(io.BytesIO(raw))
                             for p in reader.pages:
                                 text_blocks.append((p.extract_text() or "") + "\n\n")
@@ -527,20 +528,42 @@ if menu == "PDF Tools":
                         
                     if not full_text.strip():
                         st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
-                        st.stop() # Mengganti 'return'
+                        st.stop()
 
-                    with st.spinner(f"2. Menerjemahkan teks ke {target_lang}..."):
-                        # Terjemahan
+                    with st.spinner(f"2. Menerjemahkan teks ke {target_lang} (dalam blok kecil)..."):
+                        # Inisialisasi Translator
                         translator = Translator(source=src_lang, target=target_lang)
-                        # Terjemahan dalam satu blok penuh
-                        translated_text = translator.translate(full_text)
+                        
+                        # --- MODIFIKASI: Implementasi Chunking untuk mengatasi batas 5000 karakter ---
+                        # Batas karakter aman untuk satu permintaan terjemahan
+                        CHUNK_SIZE = 4800 
+                        
+                        # Membagi teks menjadi blok-blok berdasarkan batas karakter
+                        full_text_chunks = [full_text[i:i + CHUNK_SIZE] for i in range(0, len(full_text), CHUNK_SIZE)]
+                        translated_parts = []
+                        
+                        # Progress bar untuk terjemahan
+                        prog = st.progress(0)
+                        
+                        for i, chunk in enumerate(full_text_chunks):
+                            if i > 0:
+                                # Jeda sebentar antar permintaan (PENTING untuk menghindari rate limiting/block)
+                                time.sleep(0.1) 
+                            
+                            # Melakukan terjemahan per chunk
+                            translated_parts.append(translator.translate(chunk))
+                            prog.progress(int((i + 1) / len(full_text_chunks) * 100))
+
+                        # Gabungkan kembali semua bagian yang diterjemahkan
+                        translated_text = "".join(translated_parts)
+                        prog.empty()
+                        # --- AKHIR MODIFIKASI CHUNKING ---
                         
                     with st.spinner("3. Membuat file Word (.docx) baru..."):
-                        # Rekonstruksi ke Word (untuk mempertahankan struktur paragraf dasar)
+                        # Rekonstruksi ke Word
                         doc = Document()
                         
                         # Memecah teks diterjemahkan per baris untuk paragraf baru
-                        # Menangani baris kosong yang mungkin muncul
                         for paragraph in translated_text.split('\n\n'):
                             if paragraph.strip():
                                 doc.add_paragraph(paragraph)
@@ -561,7 +584,6 @@ if menu == "PDF Tools":
                     st.markdown("#### Preview Teks Asli dan Terjemahan")
                     col_preview1, col_preview2 = st.columns(2)
                     with col_preview1:
-                        # Batasi preview teks agar tidak terlalu panjang
                         st.text_area("Teks Asli (Ekstraksi)", full_text[:5000], height=300)
                     with col_preview2:
                         st.text_area("Teks Terjemahan", translated_text[:5000], height=300)
@@ -1517,3 +1539,4 @@ st.markdown("""
 Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
+
