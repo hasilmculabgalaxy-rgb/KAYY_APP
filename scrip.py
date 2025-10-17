@@ -488,109 +488,128 @@ if menu == "PDF Tools":
     else: tool = None
     
 
- # --- FITUR BARU: Terjemahan PDF ---
+ # --- FITUR BARU: Terjemahan PDF (Optimasi Struktur) ---
     if tool == "Translate PDF":
         st.markdown("---")
-        st.markdown("### 🗣️ Terjemahan Teks PDF")
-        st.info("Fitur ini mengekstrak semua teks, menerjemahkannya, dan menghasilkan file Word (DOCX) baru dengan teks hasil terjemahan.")
+        st.markdown("### 🗣️ Terjemahan Teks PDF (dengan Optimasi Struktur Word)")
+        st.info("Fitur ini mengekstrak teks per paragraf, menerjemahkannya dalam blok, dan mencoba mereplikasi struktur paragraf ke Word. **Tata letak kolom/tabel PDF tetap sulit direplikasi.**")
         
-        if Translator is None:
-            st.error("Library `deep_translator` tidak ditemukan. Silakan install: `pip install deep-translator`")
-        elif Document is None:
-             st.error("Library `python-docx` tidak ditemukan (untuk output Word). Silakan install: `pip install python-docx`")
-        else:
-            f = st.file_uploader("Unggah PDF untuk Diterjemahkan:", type="pdf", key="translate_pdf_uploader")
-            
-            col1, col2 = st.columns(2)
-            src_lang = col1.text_input("Bahasa Sumber (ISO Code, ex: id)", value="auto", help="Ketik 'auto' jika tidak yakin.")
-            target_lang = col2.text_input("Bahasa Tujuan (ISO Code, ex: en, ja, fr)", value="en")
+        if Translator is None or Document is None:
+            if Translator is None: st.error("Library `deep-translator` tidak ditemukan.")
+            if Document is None: st.error("Library `python-docx` tidak ditemukan.")
+            st.stop()
+        
+        f = st.file_uploader("Unggah PDF untuk Diterjemahkan:", type="pdf", key="translate_pdf_uploader")
+        
+        col1, col2 = st.columns(2)
+        src_lang = col1.text_input("Bahasa Sumber (ISO Code, ex: id)", value="auto", help="Ketik 'auto' jika tidak yakin.")
+        target_lang = col2.text_input("Bahasa Tujuan (ISO Code, ex: en, ja, fr)", value="en")
 
-            if f and st.button("Proses Terjemahan dan Buat Word (.docx)"):
-                try:
-                    with st.spinner("1. Mengekstrak teks dari PDF..."):
-                        # Ekstraksi Teks (menggunakan pdfplumber atau PyPDF2)
-                        text_blocks = []
-                        raw = f.read()
-                        if pdfplumber:
-                            with pdfplumber.open(io.BytesIO(raw)) as doc:
-                                for p in doc.pages:
-                                    # Tambahkan pemisah baris agar paragraf tetap jelas
-                                    text_blocks.append((p.extract_text() or "") + "\n\n") 
-                        else:
-                            if PdfReader is None:
-                                st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                                st.stop()
-                            reader = PdfReader(io.BytesIO(raw))
-                            for p in reader.pages:
-                                text_blocks.append((p.extract_text() or "") + "\n\n")
-                        
-                        full_text = "".join(text_blocks)
-                        
-                    if not full_text.strip():
-                        st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
-                        st.stop()
-
-                    with st.spinner(f"2. Menerjemahkan teks ke {target_lang} (dalam blok kecil)..."):
-                        # Inisialisasi Translator
-                        translator = Translator(source=src_lang, target=target_lang)
-                        
-                        # --- MODIFIKASI: Implementasi Chunking untuk mengatasi batas 5000 karakter ---
-                        # Batas karakter aman untuk satu permintaan terjemahan
-                        CHUNK_SIZE = 4800 
-                        
-                        # Membagi teks menjadi blok-blok berdasarkan batas karakter
-                        full_text_chunks = [full_text[i:i + CHUNK_SIZE] for i in range(0, len(full_text), CHUNK_SIZE)]
-                        translated_parts = []
-                        
-                        # Progress bar untuk terjemahan
-                        prog = st.progress(0)
-                        
-                        for i, chunk in enumerate(full_text_chunks):
-                            if i > 0:
-                                # Jeda sebentar antar permintaan (PENTING untuk menghindari rate limiting/block)
-                                time.sleep(0.1) 
-                            
-                            # Melakukan terjemahan per chunk
-                            translated_parts.append(translator.translate(chunk))
-                            prog.progress(int((i + 1) / len(full_text_chunks) * 100))
-
-                        # Gabungkan kembali semua bagian yang diterjemahkan
-                        translated_text = "".join(translated_parts)
-                        prog.empty()
-                        # --- AKHIR MODIFIKASI CHUNKING ---
-                        
-                    with st.spinner("3. Membuat file Word (.docx) baru..."):
-                        # Rekonstruksi ke Word
-                        doc = Document()
-                        
-                        # Memecah teks diterjemahkan per baris untuk paragraf baru
-                        for paragraph in translated_text.split('\n\n'):
-                            if paragraph.strip():
-                                doc.add_paragraph(paragraph)
-                        
-                        out = io.BytesIO()
-                        doc.save(out)
-                        out.seek(0)
-                        
-                    st.success("✅ Terjemahan berhasil! Unduh file Word hasil terjemahan.")
-                    st.download_button(
-                        f"⬇️ Unduh Hasil Terjemahan ({target_lang}).docx", 
-                        data=out.getvalue(), 
-                        file_name=f"translated_to_{target_lang}.docx", 
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+        if f and st.button("Proses Terjemahan dan Buat Word (.docx)", key="translate_pdf_button"):
+            try:
+                # 1. Ekstraksi Teks (Menggunakan Paragraf sebagai Unit)
+                with st.spinner("1. Mengekstrak teks dari PDF per paragraf..."):
                     
-                    st.markdown("---")
-                    st.markdown("#### Preview Teks Asli dan Terjemahan")
-                    col_preview1, col_preview2 = st.columns(2)
-                    with col_preview1:
-                        st.text_area("Teks Asli (Ekstraksi)", full_text[:5000], height=300)
-                    with col_preview2:
-                        st.text_area("Teks Terjemahan", translated_text[:5000], height=300)
+                    raw = f.read()
+                    all_text_paragraphs = []
+                    
+                    if pdfplumber:
+                        with pdfplumber.open(io.BytesIO(raw)) as doc:
+                            for p in doc.pages:
+                                # Ekstrak teks halaman, lalu pisahkan berdasarkan baris ganda (asumsi paragraf)
+                                page_text = p.extract_text() or ""
+                                # Tambahkan pemisah halaman yang jelas
+                                all_text_paragraphs.extend([p.strip() for p in page_text.split('\n\n') if p.strip()])
+                                all_text_paragraphs.append("---HALAMAN BARU---\n\n") # Marker untuk halaman baru
 
-                except Exception as e:
-                    st.error(f"Terjadi kesalahan saat terjemahan. Cek kode bahasa (ISO 639-1) dan pastikan teks dapat diekstrak. Error: {e}")
-                    traceback.print_exc()
+                    else: # Fallback ke PyPDF2
+                        reader = PdfReader(io.BytesIO(raw))
+                        for p in reader.pages:
+                            page_text = p.extract_text() or ""
+                            all_text_paragraphs.extend([p.strip() for p in page_text.split('\n\n') if p.strip()])
+                            all_text_paragraphs.append("---HALAMAN BARU---\n\n")
+                            
+                    full_text = "\n\n".join(p for p in all_text_paragraphs if p != "---HALAMAN BARU---\n\n")
+
+                if not full_text.strip():
+                    st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
+                    st.stop()
+
+                # 2. Chunking Berbasis Paragraf dan Terjemahan
+                with st.spinner(f"2. Menerjemahkan teks ke {target_lang} (mempertahankan paragraf)..."):
+                    translator = Translator(source=src_lang, target=target_lang)
+                    CHUNK_SIZE = 4500 # Batas lebih aman
+                    
+                    # Gabungkan paragraf menjadi chunks aman
+                    current_chunk = ""
+                    text_chunks_for_translation = []
+                    
+                    for p in all_text_paragraphs:
+                        if p == "---HALAMAN BARU---\n\n" or len(current_chunk) + len(p) + 2 > CHUNK_SIZE:
+                            # Jika melebihi batas, atau jika itu adalah penanda halaman baru
+                            if current_chunk:
+                                text_chunks_for_translation.append(current_chunk)
+                            current_chunk = ""
+                            if p == "---HALAMAN BARU---\n\n":
+                                text_chunks_for_translation.append(p) # Sisipkan marker halaman
+                                continue
+                        
+                        current_chunk += p + "\n\n"
+                    
+                    if current_chunk:
+                        text_chunks_for_translation.append(current_chunk)
+                        
+                    translated_parts = []
+                    prog = st.progress(0)
+                    
+                    for i, chunk in enumerate(text_chunks_for_translation):
+                        if chunk == "---HALAMAN BARU---\n\n":
+                            translated_parts.append(chunk) # Lewati terjemahan untuk marker halaman
+                        else:
+                            if i > 0: time.sleep(0.1) 
+                            translated_parts.append(translator.translate(chunk))
+                        
+                        prog.progress(int((i + 1) / len(text_chunks_for_translation) * 100))
+
+                    translated_text_combined = "".join(translated_parts)
+                    prog.empty()
+
+                # 3. Rekonstruksi ke Word
+                with st.spinner("3. Membuat file Word (.docx) baru..."):
+                    doc = Document()
+                    
+                    # Memecah berdasarkan penanda halaman dan paragraf
+                    for item in translated_text_combined.split("\n\n"):
+                        if item.strip() == "---HALAMAN BARU---":
+                            # Coba masukkan Page Break (untuk mempertahankan urutan yang kasar)
+                            doc.add_page_break()
+                        elif item.strip():
+                            # Tambahkan sebagai paragraf biasa
+                            doc.add_paragraph(item.strip())
+                    
+                    out = io.BytesIO()
+                    doc.save(out)
+                    out.seek(0)
+                    
+                st.success("✅ Terjemahan berhasil! Unduh file Word hasil terjemahan.")
+                st.download_button(
+                    f"⬇️ Unduh Hasil Terjemahan ({target_lang}).docx", 
+                    data=out.getvalue(), 
+                    file_name=f"translated_to_{target_lang}.docx", 
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+                
+                st.markdown("---")
+                st.markdown("#### Preview Teks Asli dan Terjemahan")
+                col_preview1, col_preview2 = st.columns(2)
+                with col_preview1:
+                    st.text_area("Teks Asli (Ekstraksi)", full_text[:5000], height=300)
+                with col_preview2:
+                    st.text_area("Teks Terjemahan", translated_text_combined[:5000], height=300)
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat terjemahan. Cek kode bahasa (ISO 639-1) dan pastikan teks dapat diekstrak. Error: {e}")
+                traceback.print_exc()
 
     # --- FITUR Batch Rename PDF Sesuai Excel ---
     if tool == "Batch Rename PDF Excel":
@@ -1539,4 +1558,5 @@ st.markdown("""
 Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
+
 
