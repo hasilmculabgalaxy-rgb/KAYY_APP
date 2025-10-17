@@ -1,4 +1,3 @@
-"""
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
 - **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto.
 - **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, Organise MCU by Excel.
@@ -98,8 +97,8 @@ def navigate_to(target_menu):
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
 LOGO_PATH = os.path.join("assets", "logo.png")
-# Menggunakan emoji toolbox 🛠️ sebagai fallback ikon
-page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
+# Menggunakan ikon fallback standar
+page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠" 
 st.set_page_config(page_title="Master App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
 # CSS / Theme
@@ -201,10 +200,10 @@ if "menu_selection" not in st.session_state:
     
 menu = st.session_state.menu_selection
 
-# ----------------- Fungsi Tombol Kembali (Ikon Diperbaiki) -----------------
+# ----------------- Fungsi Tombol Kembali (Ikon Dihapus) -----------------
 def add_back_to_dashboard_button():
-    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur dengan ikon 🏠."""
-    if st.button("🏠 Kembali ke Dashboard", key="back_to_dash"):
+    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur."""
+    if st.button("Kembali ke Dashboard", key="back_to_dash"):
         navigate_to("Dashboard")
     st.markdown("---")
 
@@ -232,7 +231,9 @@ st.markdown("---")
 if menu == "Dashboard":
     
     st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-    st.markdown("## ✨ Pilih Fitur Utama")
+    
+    # Perapihan Dashboard: Menggunakan st.header untuk tampilan yang lebih rapi
+    st.header("Pilih Fitur Utama") 
     
     # ------------------ FITUR UTAMA ------------------
     cols1 = st.columns(3)
@@ -240,45 +241,41 @@ if menu == "Dashboard":
     # Kompres Foto
     with cols1[0]:
         with st.container():
-            # Ikon: 🖼️ (Picture) atau 📸 (Camera)
-            st.markdown('<div class="feature-card"><b>🖼️ Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
             if st.button("Buka Kompres Foto", key="dash_foto"):
                 navigate_to("Kompres Foto")
 
     # PDF Tools
     with cols1[1]:
         with st.container():
-            # Ikon: 📄 (Page/Document) atau 📎 (Clip)
-            st.markdown('<div class="feature-card"><b>📎 PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
             if st.button("Buka PDF Tools", key="dash_pdf"):
                 navigate_to("PDF Tools")
 
     # MCU Tools
     with cols1[2]:
         with st.container():
-            # Ikon: 🩺 (Stethoscope) atau 📊 (Chart)
-            st.markdown('<div class="feature-card"><b>🩺 MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data. **Termasuk Organise by Excel**</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data. **Termasuk Organise by Excel**</div>', unsafe_allow_html=True)
             if st.button("Buka MCU Tools", key="dash_mcu"):
                 navigate_to("MCU Tools")
             
     # ------------------ FITUR LAINNYA ------------------
-    st.markdown("## ⚙️ Fitur Lainnya")
+    st.markdown("---") # Garis pemisah untuk merapikan
+    st.header("Fitur Lainnya")
     cols2 = st.columns(3)
     
   
     # File Tools
     with cols2[0]:
         with st.container():
-            # Ikon: 📁 (Folder)
-            st.markdown('<div class="feature-card"><b>📁 File Tools</b><br>Zip/unzip, konversi dasar, Batch Rename Gambar & PDF.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>File Tools</b><br>Zip/unzip, konversi dasar, Batch Rename Gambar & PDF.</div>', unsafe_allow_html=True)
             if st.button("Buka File Tools", key="dash_file"):
                 navigate_to("File Tools")
 
     # Tentang
     with cols2[1]:
         with st.container():
-            # Ikon: 💡 (Lightbulb) atau ℹ️ (Info)
-            st.markdown('<div class="feature-card"><b>ℹ️ Tentang Aplikasi</b><br>Informasi dan kebutuhan library.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>Tentang Aplikasi</b><br>Informasi dan kebutuhan library.</div>', unsafe_allow_html=True)
             if st.button("Lihat Tentang", key="dash_about"):
                 navigate_to("Tentang")
 
@@ -294,18 +291,18 @@ if menu == "Dashboard":
 # -------------- Kompres Foto / Image Tools --------------
 if menu == "Kompres Foto":
     add_back_to_dashboard_button() 
-    st.subheader("🖼️ Kompres & Kelola Foto/Gambar")
+    st.subheader("Kompres & Kelola Foto/Gambar") # Emoji dihapus
     
     # Sub-menu untuk gambar
     img_tool = st.selectbox("Pilih Fitur Gambar", [
-        "📸 Kompres Foto (Batch)", 
-        "🔢 Batch Rename/Format Gambar (Sequential)",
-        "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)"
+        "Kompres Foto (Batch)", # Emoji dihapus
+        "Batch Rename/Format Gambar (Sequential)", # Emoji dihapus
+        "Batch Rename Gambar Sesuai Excel (Fitur Baru)" # Emoji dihapus
         ])
 
-    if img_tool == "📸 Kompres Foto (Batch)":
+    if img_tool == "Kompres Foto (Batch)":
         st.markdown("---")
-        st.markdown("### 📸 Kompres Foto (Batch)")
+        st.markdown("### Kompres Foto (Batch)") # Emoji dihapus
         uploaded = st.file_uploader("Unggah gambar (jpg/png) — bisa banyak", type=["jpg","jpeg","png"], accept_multiple_files=True)
         quality = st.slider("Kualitas JPEG", 10, 95, 75)
         max_side = st.number_input("Max side (px)", min_value=100, max_value=4000, value=1200)
@@ -333,9 +330,9 @@ if menu == "Kompres Foto":
                 st.warning("Tidak ada file berhasil dikompres.")
 
     # --- FITUR Batch Rename Gambar (Sequential) ---
-    elif img_tool == "🔢 Batch Rename/Format Gambar (Sequential)": 
+    elif img_tool == "Batch Rename/Format Gambar (Sequential)": 
         st.markdown("---")
-        st.markdown("### 🔢 Ganti Nama & Ubah Format Gambar Massal (Sequential)")
+        st.markdown("### Ganti Nama & Ubah Format Gambar Massal (Sequential)") # Emoji dihapus
         uploaded_files = st.file_uploader(
             "Unggah file Gambar (JPG, PNG, dll.):", 
             type=["jpg", "jpeg", "png", "webp"], 
@@ -379,9 +376,9 @@ if menu == "Kompres Foto":
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
     # --- FITUR BARU 1: Batch Rename Gambar Sesuai Excel ---
-    elif img_tool == "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)": 
+    elif img_tool == "Batch Rename Gambar Sesuai Excel (Fitur Baru)": 
         st.markdown("---")
-        st.markdown("### 📋 Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel")
+        st.markdown("### Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel") # Emoji dihapus
         st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (termasuk ekstensi, misal: `foto_123.jpg`) dan **`nama_baru`** (termasuk ekstensi, misal: `ID_001.png`).")
         
         excel_up = st.file_uploader("Unggah Excel/CSV untuk daftar nama:", type=["xlsx", "csv"], key="rename_img_excel_up")
@@ -440,46 +437,46 @@ if menu == "Kompres Foto":
 # -------------- PDF Tools (Diperbarui Menu dan Fitur) --------------
 if menu == "PDF Tools":
     add_back_to_dashboard_button() 
-    st.subheader("📎 PDF Tools")
+    st.subheader("PDF Tools") # Emoji dihapus
 
     # Menu yang lebih terstruktur dan ditambahkan fitur baru dengan ikon yang jelas
     pdf_options = [
         "--- Pilih Tools ---",
-        "➕ Gabung PDF", 
-        "✂️ Pisah PDF", 
-        "🔄 Reorder/Hapus Halaman PDF", 
-        "🔤 Batch Rename PDF (Sequential)", 
-        "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)", 
-        "🖼️ Image -> PDF", 
-        "📸 PDF -> Image", 
-        "🔍 Ekstraksi Teks/Tabel", 
-        "🔁 Konversi PDF", 
-        "🔒 Proteksi PDF", 
-        "🛠️ Utility PDF", 
+        "Gabung PDF", # Emoji dihapus
+        "Pisah PDF", # Emoji dihapus
+        "Reorder/Hapus Halaman PDF", # Emoji dihapus
+        "Batch Rename PDF (Sequential)", # Emoji dihapus
+        "Batch Rename PDF Sesuai Excel (Fitur Baru)", # Emoji dihapus
+        "Image -> PDF", # Emoji dihapus
+        "PDF -> Image", # Emoji dihapus
+        "Ekstraksi Teks/Tabel", # Emoji dihapus
+        "Konversi PDF", # Emoji dihapus
+        "Proteksi PDF", # Emoji dihapus
+        "Utility PDF", # Emoji dihapus
     ]
     
     tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
 
     # Mapping
     if tool_select == "--- Pilih Tools ---": tool = None
-    elif tool_select == "🔍 Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) 
-    elif tool_select == "🔁 Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) 
-    elif tool_select == "🔒 Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) 
-    elif tool_select == "🛠️ Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
-    elif tool_select == "➕ Gabung PDF": tool = "Gabung PDF" 
-    elif tool_select == "✂️ Pisah PDF": tool = "Pisah PDF" 
-    elif tool_select == "🔄 Reorder/Hapus Halaman PDF": tool = "Reorder PDF" 
-    elif tool_select == "🔤 Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" 
-    elif tool_select == "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
-    elif tool_select == "📸 PDF -> Image": tool = "PDF -> Image" 
-    elif tool_select == "🖼️ Image -> PDF": tool = "Image -> PDF" 
+    elif tool_select == "Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) 
+    elif tool_select == "Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) 
+    elif tool_select == "Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) 
+    elif tool_select == "Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
+    elif tool_select == "Gabung PDF": tool = "Gabung PDF" 
+    elif tool_select == "Pisah PDF": tool = "Pisah PDF" 
+    elif tool_select == "Reorder/Hapus Halaman PDF": tool = "Reorder PDF" 
+    elif tool_select == "Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" 
+    elif tool_select == "Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
+    elif tool_select == "PDF -> Image": tool = "PDF -> Image" 
+    elif tool_select == "Image -> PDF": tool = "Image -> PDF" 
     else: tool = None
     
 
     # --- FITUR BARU 2: Batch Rename PDF Sesuai Excel ---
     if tool == "Batch Rename PDF Excel":
         st.markdown("---")
-        st.markdown("### 📝 Ganti Nama File PDF Berdasarkan Excel") 
+        st.markdown("### Ganti Nama File PDF Berdasarkan Excel") # Emoji dihapus
         st.markdown("Unggah banyak file PDF dan ganti namanya sesuai daftar di Excel/CSV.")
         st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (misal: `ID_123.pdf`) dan **`nama_baru`** (misal: `Hasil_123.pdf`).")
 
@@ -534,7 +531,7 @@ if menu == "PDF Tools":
     # --- FITUR Batch Rename PDF (Sequential) ---
     if tool == "Batch Rename PDF Seq":
         st.markdown("---")
-        st.markdown("### 🔤 Ganti Nama File PDF Massal (Sequential)") 
+        st.markdown("### Ganti Nama File PDF Massal (Sequential)") # Emoji dihapus
         uploaded_files = st.file_uploader("Unggah file PDF (multiple):", type=["pdf"], accept_multiple_files=True, key="batch_rename_pdf_uploader_seq")
     
         if uploaded_files:
@@ -558,7 +555,7 @@ if menu == "PDF Tools":
     # --- LOGIKA FITUR PDF LAINNYA (dengan ikon diperbarui) ---
     if tool == "Reorder PDF":
         st.markdown("---")
-        st.markdown("### 🔄 Reorder atau Hapus Halaman PDF") 
+        st.markdown("### Reorder atau Hapus Halaman PDF") # Emoji dihapus
         st.markdown("Unggah file PDF Anda dan tentukan urutan halaman baru (contoh: `2, 1, 3` untuk membalik, atau `1, 3` untuk menghapus halaman 2).")
 
         f = st.file_uploader("Unggah 1 file PDF:", type="pdf", key="reorder_pdf_uploader")
@@ -599,7 +596,7 @@ if menu == "PDF Tools":
                         pdf_buffer.seek(0)
 
                         st.download_button(
-                            "⬇️ Unduh Hasil PDF (Reordered)", 
+                            "Unduh Hasil PDF (Reordered)", # Emoji dihapus
                             data=pdf_buffer,
                             file_name="pdf_reordered.pdf",
                             mime="application/pdf"
@@ -617,7 +614,7 @@ if menu == "PDF Tools":
 
     if tool == "Gabung PDF":
         st.markdown("---")
-        st.markdown("### ➕ Gabung PDF")
+        st.markdown("### Gabung PDF") # Emoji dihapus
         files = st.file_uploader("Upload PDFs (multiple):", type="pdf", accept_multiple_files=True)
         if files and st.button("Gabung"):
             try:
@@ -635,7 +632,7 @@ if menu == "PDF Tools":
 
     if tool == "Pisah PDF":
         st.markdown("---")
-        st.markdown("### ✂️ Pisah PDF")
+        st.markdown("### Pisah PDF") # Emoji dihapus
         f = st.file_uploader("Upload single PDF:", type="pdf")
         if f and st.button("Split to pages (ZIP)"):
             try:
@@ -653,7 +650,7 @@ if menu == "PDF Tools":
                 
     if tool == "Hapus Halaman":
         st.markdown("---")
-        st.markdown("### 🗑️ Hapus Halaman dari PDF")
+        st.markdown("### Hapus Halaman dari PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         page_no = st.number_input("Halaman yang dihapus (1-based)", min_value=1, value=1)
         if f and st.button("Hapus Halaman"):
@@ -671,7 +668,7 @@ if menu == "PDF Tools":
 
     if tool == "Rotate PDF":
         st.markdown("---")
-        st.markdown("### 📐 Putar Halaman PDF")
+        st.markdown("### Putar Halaman PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         angle = st.selectbox("Rotate degrees", [90, 180, 270])
         if f and st.button("Rotate"):
@@ -689,7 +686,7 @@ if menu == "PDF Tools":
 
     if tool == "Kompres PDF":
         st.markdown("---")
-        st.markdown("### 📦 Kompres Ukuran PDF")
+        st.markdown("### Kompres Ukuran PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Compress (rewrite)"):
             try:
@@ -705,7 +702,7 @@ if menu == "PDF Tools":
 
     if tool == "Watermark PDF":
         st.markdown("---")
-        st.markdown("### 💧 Tambah Watermark ke PDF")
+        st.markdown("### Tambah Watermark ke PDF") # Emoji dihapus
         base = st.file_uploader("Base PDF", type="pdf")
         watermark = st.file_uploader("Watermark PDF (single page)", type="pdf")
         if base and watermark and st.button("Apply watermark"):
@@ -731,7 +728,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Image":
         st.markdown("---")
-        st.markdown("### 📸 PDF ke Gambar (PNG/JPEG)")
+        st.markdown("### PDF ke Gambar (PNG/JPEG)") # Emoji dihapus
         st.info("Requires pdf2image + poppler (server).")
         f = st.file_uploader("Upload PDF", type="pdf")
         dpi = st.slider("DPI", 100, 300, 150)
@@ -765,7 +762,7 @@ if menu == "PDF Tools":
 
     if tool == "Image -> PDF":
         st.markdown("---")
-        st.markdown("### 🖼️ Gambar ke PDF")
+        st.markdown("### Gambar ke PDF") # Emoji dihapus
         imgs = st.file_uploader("Upload images", type=["jpg","png","jpeg"], accept_multiple_files=True)
         if imgs and st.button("Images -> PDF"):
             try:
@@ -783,7 +780,7 @@ if menu == "PDF Tools":
 
     if tool == "Extract Text":
         st.markdown("---")
-        st.markdown("### 📝 Ekstraksi Teks dari PDF")
+        st.markdown("### Ekstraksi Teks dari PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Extract text"):
             try:
@@ -806,7 +803,7 @@ if menu == "PDF Tools":
 
     if tool == "Extract Tables -> Excel":
         st.markdown("---")
-        st.markdown("### 📉 Ekstraksi Tabel ke Excel")
+        st.markdown("### Ekstraksi Tabel ke Excel") # Emoji dihapus
         if pdfplumber is None:
             st.error("pdfplumber is required for table extraction (pip install pdfplumber)")
         else:
@@ -833,7 +830,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Word":
         st.markdown("---")
-        st.markdown("### 📄 Konversi PDF ke Word (Text-based)")
+        st.markdown("### Konversi PDF ke Word (Text-based)") # Emoji dihapus
         if Document is None:
             st.error("python-docx is required for PDF->Word (pip install python-docx)")
         else:
@@ -853,7 +850,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Excel (text)":
         st.markdown("---")
-        st.markdown("### 📊 Konversi PDF ke Excel (Text per Halaman)")
+        st.markdown("### Konversi PDF ke Excel (Text per Halaman)") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Convert to Excel (text)"):
             try:
@@ -870,7 +867,7 @@ if menu == "PDF Tools":
 
     if tool == "Encrypt PDF":
         st.markdown("---")
-        st.markdown("### 🔑 Kunci (Encrypt) PDF")
+        st.markdown("### Kunci (Encrypt) PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         pw = st.text_input("Password", type="password")
         if f and pw and st.button("Encrypt"):
@@ -888,7 +885,7 @@ if menu == "PDF Tools":
 
     if tool == "Decrypt PDF":
         st.markdown("---")
-        st.markdown("### 🔓 Buka Kunci (Decrypt) PDF")
+        st.markdown("### Buka Kunci (Decrypt) PDF") # Emoji dihapus
         f = st.file_uploader("Upload encrypted PDF", type="pdf")
         pw = st.text_input("Password for decryption", type="password")
         if f and pw and st.button("Decrypt"):
@@ -907,7 +904,7 @@ if menu == "PDF Tools":
 
     if tool == "Batch Lock (Excel)":
         st.markdown("---")
-        st.markdown("### 🔑 Batch Lock PDF Berdasarkan Daftar Excel")
+        st.markdown("### Batch Lock PDF Berdasarkan Daftar Excel") # Emoji dihapus
         excel_file = st.file_uploader("Upload Excel (filename,password) or CSV", type=["xlsx","csv"])
         pdfs = st.file_uploader("Upload PDFs (multiple)", type="pdf", accept_multiple_files=True)
         if excel_file and pdfs and st.button("Batch Lock"):
@@ -964,7 +961,7 @@ if menu == "PDF Tools":
 
     if tool == "Preview PDF":
         st.markdown("---")
-        st.markdown("### 👁️ Preview PDF")
+        st.markdown("### Preview PDF") # Emoji dihapus
         f = st.file_uploader("Upload PDF", type="pdf")
         mode = st.radio("Preview mode", ["First page (fast)", "All pages (slow)"])
         if f and st.button("Show Preview"):
@@ -1016,15 +1013,15 @@ if menu == "PDF Tools":
 # -------------- File Tools --------------
 if menu == "File Tools":
     add_back_to_dashboard_button() 
-    st.subheader("📁 File Tools")
+    st.subheader("File Tools") # Emoji dihapus
 
     file_tool = st.selectbox("Pilih Fitur File", [
-        "📦 Zip / Unzip File", 
-        "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", 
-        "🛠️ Cek Keberadaan Library"
+        "Zip / Unzip File", # Emoji dihapus
+        "Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", # Emoji dihapus
+        "Cek Keberadaan Library" # Emoji dihapus
     ])
 
-    if file_tool == "📦 Zip / Unzip File":
+    if file_tool == "Zip / Unzip File":
         st.markdown("---")
         st.subheader("Kompres ke ZIP atau Ekstrak dari ZIP")
         mode = st.radio("Pilih Mode", ["Compress to ZIP", "Extract from ZIP"])
@@ -1059,7 +1056,7 @@ if menu == "File Tools":
                     st.error(f"Gagal ekstrak: {e}")
 
 
-    if file_tool == "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)":
+    if file_tool == "Konversi Dasar (misal: TXT/CSV/JSON -> Excel)":
         st.markdown("---")
         st.subheader("Konversi Data ke Excel")
         f = st.file_uploader("Unggah file (TXT, CSV, JSON)", type=["txt", "csv", "json"])
@@ -1083,7 +1080,7 @@ if menu == "File Tools":
             except Exception as e:
                 st.error(f"Gagal memproses file: {e}")
 
-    if file_tool == "🛠️ Cek Keberadaan Library":
+    if file_tool == "Cek Keberadaan Library":
         st.markdown("---")
         st.subheader("Status Library Tambahan")
         st.info("Fitur ini membantu Anda mengecek apakah library Python yang dibutuhkan sudah terinstall di lingkungan Streamlit ini.")
@@ -1096,26 +1093,26 @@ if menu == "File Tools":
         }
 
         for name, is_available in libs.items():
-            status = "✅ Tersedia" if is_available else "❌ Tidak Tersedia"
+            status = "Tersedia" if is_available else "Tidak Tersedia"
             st.markdown(f"- **{name}**: {status}")
 
 
 # -------------- MCU Tools --------------
 if menu == "MCU Tools":
     add_back_to_dashboard_button() 
-    st.subheader("🩺 MCU Tools (Analisis Data Kesehatan)")
+    st.subheader("MCU Tools (Analisis Data Kesehatan)") # Emoji dihapus
     st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
     
     mcu_tool = st.selectbox("Pilih Fitur MCU", [
-        "📂 Organise by Excel (Original Logic) - Fitur Baru", 
-        "📊 Dashboard Analisis Data MCU (Excel) - Diperbarui", # NAMA DIPERBARUI
-        "📝 Konversi Laporan MCU (PDF) ke Data", 
+        "Organise by Excel (Original Logic) - Fitur Baru", # Emoji dihapus
+        "Dashboard Analisis Data MCU (Excel) - Diperbarui", # Emoji dihapus
+        "Konversi Laporan MCU (PDF) ke Data", # Emoji dihapus
     ], index=1) # Set default ke fitur yang baru diperbarui
     
     # === LOGIC FOR NEW FEATURE: Organise by Excel (Original Logic) ===
-    if mcu_tool == "📂 Organise by Excel (Original Logic) - Fitur Baru":
+    if mcu_tool == "Organise by Excel (Original Logic) - Fitur Baru":
         st.markdown("---")
-        st.subheader("📂 Organise by Excel (Original Logic)")
+        st.subheader("Organise by Excel (Original Logic)") # Emoji dihapus
         st.info("Fitur ini akan membuat struktur folder di dalam file ZIP berdasarkan data Excel dan nama file PDF yang diunggah.")
         
         excel_up = st.file_uploader("Upload Excel (No_MCU, Nama, Departemen, JABATAN) or (filename,target_folder)", type=["xlsx","csv"], key="mcu_organize_excel")
@@ -1192,9 +1189,9 @@ if menu == "MCU Tools":
     # === END OF ORGANISE LOGIC ===
 
     # === LOGIC FOR ENHANCED DASHBOARD ANALISIS ===
-    if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel) - Diperbarui":
+    if mcu_tool == "Dashboard Analisis Data MCU (Excel) - Diperbarui":
         st.markdown("---")
-        st.subheader("📊 Dashboard Analisis Hasil MCU Massal (Diperbarui)")
+        st.subheader("Dashboard Analisis Hasil MCU Massal (Diperbarui)") # Emoji dihapus
         st.markdown("Unggah data hasil MCU (Excel/CSV) untuk analisis cepat, visualisasi, dan filter data.")
         
         uploaded_file = st.file_uploader(
@@ -1221,7 +1218,7 @@ if menu == "MCU Tools":
                 st.dataframe(df.head(), use_container_width=True)
 
                 st.markdown("---")
-                st.markdown("### 📈 Visualisasi & Analisis Cepat Status")
+                st.markdown("### Visualisasi & Analisis Cepat Status") # Emoji dihapus
                 
                 # 2. Analisis Status Kesehatan
                 # Cari kolom yang mengandung 'status', 'fit', atau 'hasil'
@@ -1253,7 +1250,7 @@ if menu == "MCU Tools":
                         # Download Data Agregat
                         excel_bytes = df_to_excel_bytes(status_counts)
                         st.download_button(
-                            "⬇️ Unduh Data Agregasi Status (Excel)", 
+                            "Unduh Data Agregasi Status (Excel)", # Emoji dihapus
                             data=excel_bytes, 
                             file_name="status_agregat.xlsx", 
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1266,7 +1263,7 @@ if menu == "MCU Tools":
                 st.markdown("---")
                 
                 # 3. Analisis Kategorikal/Filter
-                st.markdown("### 🔍 Filter dan Analisis Data Kategorikal")
+                st.markdown("### Filter dan Analisis Data Kategorikal") # Emoji dihapus
                 
                 # Pilih kolom kategorikal (object type) dengan jumlah unik > 1 dan <= 50
                 filter_cols = [
@@ -1294,7 +1291,7 @@ if menu == "MCU Tools":
                     # Download Agregat Kategorikal
                     excel_bytes_cat = df_to_excel_bytes(cat_counts)
                     st.download_button(
-                        f"⬇️ Unduh Data Agregasi {col_to_analyze} (Excel)", 
+                        f"Unduh Data Agregasi {col_to_analyze} (Excel)", # Emoji dihapus
                         data=excel_bytes_cat, 
                         file_name=f"{col_to_analyze.lower()}_agregat.xlsx", 
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1319,7 +1316,7 @@ if menu == "MCU Tools":
                         # Download Filtered Data Mentah
                         excel_bytes_filtered = df_to_excel_bytes(df_filtered)
                         st.download_button(
-                            f"⬇️ Unduh Data Filtered ({selected_value}) (Excel)", 
+                            f"Unduh Data Filtered ({selected_value}) (Excel)", # Emoji dihapus
                             data=excel_bytes_filtered, 
                             file_name=f"data_filtered_{selected_value.lower().replace(' ', '_')}.xlsx", 
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1335,7 +1332,7 @@ if menu == "MCU Tools":
                 traceback.print_exc()
 
     # === LOGIC FOR PDF TO DATA (Placeholder) ===
-    if mcu_tool == "📝 Konversi Laporan MCU (PDF) ke Data":
+    if mcu_tool == "Konversi Laporan MCU (PDF) ke Data":
         st.markdown("---")
         st.subheader("Ekstraksi Data dari Laporan MCU PDF")
         st.warning("Fitur ini sangat bergantung pada struktur dan format PDF. Mungkin memerlukan konfigurasi kustom.")
@@ -1349,13 +1346,13 @@ if menu == "MCU Tools":
 # -------------- Tentang (Diperbarui) --------------
 if menu == "Tentang":
     add_back_to_dashboard_button() 
-    st.subheader("ℹ️ Tentang Master App – Tools MCU")
+    st.subheader("Tentang Master App – Tools MCU") # Emoji dihapus
     st.markdown("""
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
-    - 📸 **Kompres Foto & Gambar**
-    - 📎 **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename)
-    - 🩺 **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data, **Organise by Excel**)
-    - 📁 **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
+    - **Kompres Foto & Gambar**
+    - **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename)
+    - **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data, **Organise by Excel**)
+    - **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
 
     <br>
     
@@ -1376,4 +1373,3 @@ st.markdown("""
 Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
-
