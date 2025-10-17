@@ -3,6 +3,7 @@ KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARI
 - **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto.
 - **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, Organise MCU by Excel.
 - **FITUR DIPERBARUI:** Dashboard Analisis Data MCU Massal.
+- **FITUR TERBARU:** Terjemahan PDF ke Bahasa Lain.
 """
 
 import os
@@ -105,9 +106,10 @@ def navigate_to(target_menu):
         st.experimental_rerun()
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
-LOGO_PATH = os.path.join("assets", "logo.png")
+# LOGO_PATH = os.path.join("assets", "logo.png") # Dinonaktifkan karena file assets tidak tersedia
+LOGO_PATH = "🛠️"
 # Menggunakan emoji toolbox 🛠️ sebagai fallback ikon
-page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
+page_icon = LOGO_PATH
 st.set_page_config(page_title="Master App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
 # CSS / Theme
@@ -219,11 +221,8 @@ def add_back_to_dashboard_button():
 # ----------------- Halaman Header (Selalu ditampilkan) -----------------
 header_col1, header_col2 = st.columns([1, 4])
 with header_col1:
-    if os.path.exists(LOGO_PATH):
-        try:
-            st.image(LOGO_PATH, width=100)
-        except Exception:
-            st.write("Master - App")
+    # Menggunakan ikon emoji karena LOGO_PATH tidak tersedia
+    st.markdown("<h1 style='font-size: 3rem;'>🛠️</h1>", unsafe_allow_html=True)
 
 with header_col2:
     st.title("Master - App – Tools MCU")
@@ -257,7 +256,7 @@ if menu == "Dashboard":
     with cols1[1]:
         with st.container():
             # Ikon: 📄 (Page/Document) atau 📎 (Clip)
-            st.markdown('<div class="feature-card"><b>📎 PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>📎 PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel/Sequential, **Terjemahan**.</div>', unsafe_allow_html=True)
             if st.button("Buka PDF Tools", key="dash_pdf"):
                 navigate_to("PDF Tools")
 
@@ -356,7 +355,9 @@ if menu == "Kompres Foto":
             new_format = col2.selectbox("Format Output Baru:", ["Sama seperti Asli", "JPG", "PNG", "WEBP"], index=0, key="format_img_seq")
 
             if st.button("Proses Batch File", key="process_batch_rename_seq"):
-                if not new_prefix: st.error("Prefix nama file tidak boleh kosong.")
+                if not new_prefix: 
+                    st.error("Prefix nama file tidak boleh kosong.")
+                    st.stop()
                 else:
                     output_zip = io.BytesIO()
                     try:
@@ -408,39 +409,40 @@ if menu == "Kompres Foto":
                     required_cols = ['nama_lama', 'nama_baru']
                     if not all(col in df.columns for col in required_cols):
                         st.error(f"Excel/CSV wajib memiliki kolom: {', '.join(required_cols)}")
-                    else:
-                        # 3. Map File dan Proses Rename
-                        file_map = {f.name: f.read() for f in files}
-                        out_map = {}
-                        not_found = []
-                        df['nama_lama_str'] = df['nama_lama'].astype(str).str.strip() # Gunakan str.strip() untuk membersihkan spasi
+                        st.stop() # Mengganti 'return'
+                    
+                    # 3. Map File dan Proses Rename
+                    file_map = {f.name: f.read() for f in files}
+                    out_map = {}
+                    not_found = []
+                    df['nama_lama_str'] = df['nama_lama'].astype(str).str.strip() # Gunakan str.strip() untuk membersihkan spasi
 
-                        for _, row in df.iterrows():
-                            old_name = str(row['nama_lama']).strip()
-                            new_name = str(row['nama_baru']).strip()
-                            
-                            # Cek di file yang diupload (case-sensitive)
-                            if old_name in file_map:
-                                # Pastikan nama baru memiliki ekstensi
-                                if not os.path.splitext(new_name)[1]:
-                                    # Coba ambil ekstensi dari nama lama jika nama baru tidak ada
-                                    _, old_ext = os.path.splitext(old_name)
-                                    new_name = new_name + old_ext
-                                    
-                                out_map[new_name] = file_map[old_name]
-                            else:
-                                not_found.append(old_name)
-
-                        # 4. Buat ZIP
-                        if out_map:
-                            zipb = make_zip_from_map(out_map)
-                            st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
-                            st.download_button("Unduh Hasil (ZIP)", zipb, file_name="gambar_renamed_by_excel.zip", mime="application/zip")
-                        else:
-                            st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
+                    for _, row in df.iterrows():
+                        old_name = str(row['nama_lama']).strip()
+                        new_name = str(row['nama_baru']).strip()
                         
-                        if not_found:
-                            st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
+                        # Cek di file yang diupload (case-sensitive)
+                        if old_name in file_map:
+                            # Pastikan nama baru memiliki ekstensi
+                            if not os.path.splitext(new_name)[1]:
+                                # Coba ambil ekstensi dari nama lama jika nama baru tidak ada
+                                _, old_ext = os.path.splitext(old_name)
+                                new_name = new_name + old_ext
+                                
+                            out_map[new_name] = file_map[old_name]
+                        else:
+                            not_found.append(old_name)
+
+                    # 4. Buat ZIP
+                    if out_map:
+                        zipb = make_zip_from_map(out_map)
+                        st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
+                        st.download_button("Unduh Hasil (ZIP)", zipb, file_name="gambar_renamed_by_excel.zip", mime="application/zip")
+                    else:
+                        st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
+                    
+                    if not_found:
+                        st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
             except Exception as e:
                 st.error(f"Terjadi kesalahan pemrosesan: {e}")
                 traceback.print_exc()
@@ -516,7 +518,7 @@ if menu == "PDF Tools":
                         else:
                             if PdfReader is None:
                                 st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                                return
+                                st.stop() # Mengganti 'return'
                             reader = PdfReader(io.BytesIO(raw))
                             for p in reader.pages:
                                 text_blocks.append((p.extract_text() or "") + "\n\n")
@@ -525,7 +527,7 @@ if menu == "PDF Tools":
                         
                     if not full_text.strip():
                         st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
-                        return
+                        st.stop() # Mengganti 'return'
 
                     with st.spinner(f"2. Menerjemahkan teks ke {target_lang}..."):
                         # Terjemahan
@@ -591,34 +593,35 @@ if menu == "PDF Tools":
                     required_cols = ['nama_lama', 'nama_baru']
                     if not all(col in df.columns for col in required_cols):
                         st.error(f"Excel/CSV wajib memiliki kolom: {', '.join(required_cols)}")
-                    else:
-                        # 3. Map File dan Proses Rename
-                        file_map = {f.name: f.read() for f in files}
-                        out_map = {}
-                        not_found = []
+                        st.stop() # Mengganti 'return'
+                    
+                    # 3. Map File dan Proses Rename
+                    file_map = {f.name: f.read() for f in files}
+                    out_map = {}
+                    not_found = []
+                    
+                    for _, row in df.iterrows():
+                        old_name = str(row['nama_lama']).strip()
+                        new_name = str(row['nama_baru']).strip()
                         
-                        for _, row in df.iterrows():
-                            old_name = str(row['nama_lama']).strip()
-                            new_name = str(row['nama_baru']).strip()
-                            
-                            if old_name in file_map:
-                                # Tambahkan ekstensi .pdf jika belum ada di nama baru
-                                if not new_name.lower().endswith('.pdf'):
-                                    new_name += '.pdf'
-                                out_map[new_name] = file_map[old_name]
-                            else:
-                                not_found.append(old_name)
-
-                        # 4. Buat ZIP
-                        if out_map:
-                            zipb = make_zip_from_map(out_map)
-                            st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
-                            st.download_button("Unduh Hasil (ZIP)", zipb, file_name="pdf_renamed_by_excel.zip", mime="application/zip")
+                        if old_name in file_map:
+                            # Tambahkan ekstensi .pdf jika belum ada di nama baru
+                            if not new_name.lower().endswith('.pdf'):
+                                new_name += '.pdf'
+                            out_map[new_name] = file_map[old_name]
                         else:
-                            st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
-                        
-                        if not_found:
-                            st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
+                            not_found.append(old_name)
+
+                    # 4. Buat ZIP
+                    if out_map:
+                        zipb = make_zip_from_map(out_map)
+                        st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
+                        st.download_button("Unduh Hasil (ZIP)", zipb, file_name="pdf_renamed_by_excel.zip", mime="application/zip")
+                    else:
+                        st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
+                    
+                    if not_found:
+                        st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
             except Exception as e:
                 st.error(f"Terjadi kesalahan pemrosesan: {e}")
                 traceback.print_exc()
@@ -635,7 +638,9 @@ if menu == "PDF Tools":
             start_num = col2.number_input("Mulai dari Angka (Counter):", min_value=1, value=1, step=1, key="start_num_pdf_seq")
 
             if st.button("Proses Ganti Nama (ZIP)", key="process_batch_rename_pdf_seq"):
-                if not new_prefix: st.error("Prefix nama file tidak boleh kosong.")
+                if not new_prefix: 
+                    st.error("Prefix nama file tidak boleh kosong.")
+                    st.stop() # Mengganti 'return'
                 else:
                     output_zip = io.BytesIO()
                     try:
@@ -658,6 +663,9 @@ if menu == "PDF Tools":
         if f:
             try:
                 raw = f.read()
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 reader = PdfReader(io.BytesIO(raw))
                 num_pages = len(reader.pages)
                 st.info(f"PDF berhasil dimuat. Jumlah total halaman: **{num_pages}**.")
@@ -678,7 +686,8 @@ if menu == "PDF Tools":
                         
                         if any(n < 1 or n > num_pages for n in input_list):
                             st.error(f"Nomor halaman harus antara 1 sampai {num_pages}.")
-                            raise ValueError("Invalid page number in input.")
+                            # Ganti raise ValueError dengan st.stop()
+                            st.stop() 
 
                         new_order_indices = [n - 1 for n in input_list]
                       
@@ -698,8 +707,6 @@ if menu == "PDF Tools":
                         )
                         st.success(f"Pemrosesan selesai. Total halaman baru: {len(new_order_indices)}.")
 
-                    except ValueError:
-                        pass
                     except Exception as e:
                         st.error(f"Format urutan halaman tidak valid atau terjadi kesalahan pemrosesan: {e}")
 
@@ -713,6 +720,9 @@ if menu == "PDF Tools":
         files = st.file_uploader("Upload PDFs (multiple):", type="pdf", accept_multiple_files=True)
         if files and st.button("Gabung"):
             try:
+                if PdfWriter is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Menggabungkan..."):
                     writer = PdfWriter()
                     for f in files:
@@ -731,6 +741,9 @@ if menu == "PDF Tools":
         f = st.file_uploader("Upload single PDF:", type="pdf")
         if f and st.button("Split to pages (ZIP)"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Memisahkan..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     out_map = {}
@@ -750,6 +763,9 @@ if menu == "PDF Tools":
         page_no = st.number_input("Halaman yang dihapus (1-based)", min_value=1, value=1)
         if f and st.button("Hapus Halaman"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Menghapus..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     writer = PdfWriter()
@@ -768,6 +784,9 @@ if menu == "PDF Tools":
         angle = st.selectbox("Rotate degrees", [90, 180, 270])
         if f and st.button("Rotate"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Memutar..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     writer = PdfWriter()
@@ -785,6 +804,9 @@ if menu == "PDF Tools":
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Compress (rewrite)"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Mengompres (rewrite)..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     writer = PdfWriter()
@@ -802,6 +824,9 @@ if menu == "PDF Tools":
         watermark = st.file_uploader("Watermark PDF (single page)", type="pdf")
         if base and watermark and st.button("Apply watermark"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Menerapkan watermark..."):
                     rb = PdfReader(io.BytesIO(base.read()))
                     rm = PdfReader(io.BytesIO(watermark.read()))
@@ -832,6 +857,7 @@ if menu == "PDF Tools":
             try:
                 if not PDF2IMAGE_AVAILABLE:
                     st.error("pdf2image not installed or poppler missing.")
+                    st.stop()
                 else:
                     with st.spinner("Converting..."):
                         pdf_bytes = f.read()
@@ -879,6 +905,9 @@ if menu == "PDF Tools":
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Extract text"):
             try:
+                if PdfReader is None and pdfplumber is None:
+                    st.error("PyPDF2 atau pdfplumber tidak terinstall.")
+                    st.stop()
                 with st.spinner("Mengekstrak teks..."):
                     text_blocks = []
                     raw = f.read()
@@ -932,6 +961,9 @@ if menu == "PDF Tools":
             f = st.file_uploader("Upload PDF", type="pdf")
             if f and st.button("Convert to Word"):
                 try:
+                    if PdfReader is None:
+                        st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                        st.stop()
                     with st.spinner("Converting..."):
                         reader = PdfReader(io.BytesIO(f.read()))
                         doc = Document()
@@ -949,6 +981,9 @@ if menu == "PDF Tools":
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Convert to Excel (text)"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Converting..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     rows = []
@@ -967,6 +1002,9 @@ if menu == "PDF Tools":
         pw = st.text_input("Password", type="password")
         if f and pw and st.button("Encrypt"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Mengunci PDF..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     writer = PdfWriter()
@@ -985,6 +1023,9 @@ if menu == "PDF Tools":
         pw = st.text_input("Password for decryption", type="password")
         if f and pw and st.button("Decrypt"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Membuka PDF..."):
                     reader = PdfReader(io.BytesIO(f.read()))
                     if getattr(reader, "is_encrypted", False):
@@ -1004,6 +1045,9 @@ if menu == "PDF Tools":
         pdfs = st.file_uploader("Upload PDFs (multiple)", type="pdf", accept_multiple_files=True)
         if excel_file and pdfs and st.button("Batch Lock"):
             try:
+                if PdfReader is None:
+                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
+                    st.stop()
                 with st.spinner("Batch locking PDFs..."):
                     if excel_file.name.lower().endswith(".csv"):
                         df = pd.read_csv(io.BytesIO(excel_file.read()))
@@ -1061,6 +1105,9 @@ if menu == "PDF Tools":
         mode = st.radio("Preview mode", ["First page (fast)", "All pages (slow)"])
         if f and st.button("Show Preview"):
             try:
+                if PdfReader is None and not PDF2IMAGE_AVAILABLE:
+                    st.error("PyPDF2/pdf2image tidak terinstall.")
+                    st.stop()
                 with st.spinner("Preparing preview..."):
                     pdf_bytes = f.read()
                     if PDF2IMAGE_AVAILABLE:
@@ -1185,7 +1232,7 @@ if menu == "File Tools":
             "pdfplumber": pdfplumber is not None,
             "python-docx (Document)": Document is not None,
             "pdf2image (convert_from_path/bytes)": PDF2IMAGE_AVAILABLE,
-            "deep_translator (GoogleTranslator)": Translator is not None, # <-- UPDATE STATUS
+            "deep_translator (GoogleTranslator)": Translator is not None, 
         }
 
         for name, is_available in libs.items():
@@ -1454,7 +1501,7 @@ if menu == "Tentang":
     
     ### Kebutuhan Library Tambahan
     Beberapa fitur memerlukan library tambahan (instal di environment Anda):
-    - `PyPDF2` (Dasar PDF)
+    - `PyPDF2` (Dasar PDF): `pip install PyPDF2`
     - `pdfplumber` untuk ekstraksi tabel teks: `pip install pdfplumber`
     - `python-docx` untuk menghasilkan .docx: `pip install python-docx`
     - `deep-translator` untuk fitur terjemahan PDF: `pip install deep-translator`
