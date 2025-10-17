@@ -1,8 +1,8 @@
 """
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
-- Mengganti semua placeholder ikon '??' dan '???' dengan emoji/ikon yang relevan.
-- Memperbarui CSS untuk tampilan yang lebih modern dan menarik.
-- Menggunakan st.container dan st.columns untuk layout Dashboard yang rapi.
+- **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto, MCU Tools.
+- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential.
+- **TAMPILAN BARU:** Mengganti semua placeholder ikon dengan emoji/ikon yang relevan dan memperbarui CSS untuk tampilan yang lebih modern.
 """
 
 import os
@@ -97,7 +97,7 @@ def navigate_to(target_menu):
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
 LOGO_PATH = os.path.join("assets", "logo.png")
-# Menggunakan emoji toolbox ? sebagai fallback ikon
+# Menggunakan emoji toolbox 🛠️ sebagai fallback ikon
 page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
 st.set_page_config(page_title="KAY App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
@@ -298,8 +298,8 @@ if menu == "Kompres Foto":
     # Sub-menu untuk gambar
     img_tool = st.selectbox("Pilih Fitur Gambar", [
         "📸 Kompres Foto (Batch)", 
-        "🔢 Batch Rename/Format Gambar (Sequential)", # FIX: Ikon angka
-        "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)" # FIX: Ikon clipboard
+        "🔢 Batch Rename/Format Gambar (Sequential)",
+        "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)"
         ])
 
     if img_tool == "📸 Kompres Foto (Batch)":
@@ -444,34 +444,34 @@ if menu == "PDF Tools":
     # Menu yang lebih terstruktur dan ditambahkan fitur baru dengan ikon yang jelas
     pdf_options = [
         "--- Pilih Tools ---",
-        "➕ Gabung PDF", # FIX: Ikon Plus
-        "✂️ Pisah PDF", # FIX: Ikon Gunting
-        "🔄 Reorder/Hapus Halaman PDF", # FIX: Ikon Refresh/Cycle
-        "🔤 Batch Rename PDF (Sequential)", # FIX: Ikon Alphabet
-        "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)", # FIX: Ikon Memo
-        "🖼️ Image -> PDF", # FIX: Ikon Gambar
-        "📸 PDF -> Image", # FIX: Ikon Kamera
-        "🔍 Ekstraksi Teks/Tabel", # FIX: Ikon Kaca Pembesar
-        "🔁 Konversi PDF", # FIX: Ikon Repeat
-        "🔒 Proteksi PDF", # FIX: Ikon Kunci
-        "🛠️ Utility PDF", # FIX: Ikon Toolbox
+        "➕ Gabung PDF", 
+        "✂️ Pisah PDF", 
+        "🔄 Reorder/Hapus Halaman PDF", 
+        "🔤 Batch Rename PDF (Sequential)", 
+        "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)", 
+        "🖼️ Image -> PDF", 
+        "📸 PDF -> Image", 
+        "🔍 Ekstraksi Teks/Tabel", 
+        "🔁 Konversi PDF", 
+        "🔒 Proteksi PDF", 
+        "🛠️ Utility PDF", 
     ]
     
     tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
 
     # Mapping
     if tool_select == "--- Pilih Tools ---": tool = None
-    elif tool_select == "🔍 Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) # FIX: Ikon
-    elif tool_select == "🔁 Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) # FIX: Ikon
-    elif tool_select == "🔒 Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) # FIX: Ikon
-    elif tool_select == "🛠️ Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) # FIX: Ikon
-    elif tool_select == "➕ Gabung PDF": tool = "Gabung PDF" # FIX: Ikon
-    elif tool_select == "✂️ Pisah PDF": tool = "Pisah PDF" # FIX: Ikon
-    elif tool_select == "🔄 Reorder/Hapus Halaman PDF": tool = "Reorder PDF" # FIX: Ikon
-    elif tool_select == "🔤 Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" # FIX: Ikon
-    elif tool_select == "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" # FIX: Ikon
-    elif tool_select == "📸 PDF -> Image": tool = "PDF -> Image" # FIX: Ikon
-    elif tool_select == "🖼️ Image -> PDF": tool = "Image -> PDF" # FIX: Ikon
+    elif tool_select == "🔍 Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) 
+    elif tool_select == "🔁 Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) 
+    elif tool_select == "🔒 Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) 
+    elif tool_select == "🛠️ Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
+    elif tool_select == "➕ Gabung PDF": tool = "Gabung PDF" 
+    elif tool_select == "✂️ Pisah PDF": tool = "Pisah PDF" 
+    elif tool_select == "🔄 Reorder/Hapus Halaman PDF": tool = "Reorder PDF" 
+    elif tool_select == "🔤 Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" 
+    elif tool_select == "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
+    elif tool_select == "📸 PDF -> Image": tool = "PDF -> Image" 
+    elif tool_select == "🖼️ Image -> PDF": tool = "Image -> PDF" 
     else: tool = None
     
 
@@ -598,7 +598,7 @@ if menu == "PDF Tools":
                         pdf_buffer.seek(0)
 
                         st.download_button(
-                            "⬇️ Unduh Hasil PDF (Reordered)", # FIX: Ikon Download
+                            "⬇️ Unduh Hasil PDF (Reordered)", 
                             data=pdf_buffer,
                             file_name="pdf_reordered.pdf",
                             mime="application/pdf"
@@ -1009,9 +1009,9 @@ if menu == "File Tools":
     st.subheader("📁 File Tools")
 
     file_tool = st.selectbox("Pilih Fitur File", [
-        "📦 Zip / Unzip File", # FIX: Ikon Box
-        "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", # FIX: Ikon Repeat
-        "🛠️ Cek Keberadaan Library" # FIX: Ikon Toolbox
+        "📦 Zip / Unzip File", 
+        "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", 
+        "🛠️ Cek Keberadaan Library"
     ])
 
     if file_tool == "📦 Zip / Unzip File":
@@ -1097,8 +1097,8 @@ if menu == "MCU Tools":
     st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
     
     mcu_tool = st.selectbox("Pilih Fitur MCU", [
-        "📊 Dashboard Analisis Data MCU (Excel)", # FIX: Ikon Chart
-        "📝 Konversi Laporan MCU (PDF) ke Data", # FIX: Ikon Memo
+        "📊 Dashboard Analisis Data MCU (Excel)", 
+        "📝 Konversi Laporan MCU (PDF) ke Data", 
     ])
 
     if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel)":
