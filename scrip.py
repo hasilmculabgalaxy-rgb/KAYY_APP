@@ -1,7 +1,7 @@
 """
 KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
-- **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto, MCU Tools.
-- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential.
+- **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto.
+- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, **Organise MCU by Excel (Fitur Baru dari User)**.
 - **TAMPILAN BARU:** Mengganti semua placeholder ikon dengan emoji/ikon yang relevan dan memperbarui CSS untuk tampilan yang lebih modern.
 """
 
@@ -256,7 +256,7 @@ if menu == "Dashboard":
     with cols1[2]:
         with st.container():
             # Ikon: 🩺 (Stethoscope) atau 📊 (Chart)
-            st.markdown('<div class="feature-card"><b>🩺 MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feature-card"><b>🩺 MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data. **Termasuk Organise by Excel**</div>', unsafe_allow_html=True)
             if st.button("Buka MCU Tools", key="dash_mcu"):
                 navigate_to("MCU Tools")
             
@@ -925,12 +925,21 @@ if menu == "PDF Tools":
                         cols = [c.lower() for c in df.columns]
                         try:
                             # Safely extract column names
-                            target_col = df.columns[cols.index('filename')]
-                            pwd_col = df.columns[cols.index('password')]
-                            target = str(row[target_col]).strip()
-                            pwd = str(row[pwd_col]).strip()
+                            # Mencari 'filename' atau 'nama_file'
+                            target_col = next((c for c in df.columns if c.lower() in ('filename', 'nama_file')), None)
+                            # Mencari 'password' atau 'kata_sandi'
+                            pwd_col = next((c for c in df.columns if c.lower() in ('password', 'kata_sandi')), None)
+
+                            if target_col and pwd_col:
+                                target = str(row[target_col]).strip()
+                                pwd = str(row[pwd_col]).strip()
+                            else:
+                                # Jika kolom tidak ditemukan, coba asumsi posisi
+                                target = str(row.iloc[0]).strip() # Asumsi kolom 1 adalah filename
+                                pwd = str(row.iloc[1]).strip() # Asumsi kolom 2 adalah password
                         except Exception:
                             target = None; pwd = None
+                        
                         if target and pwd:
                             # Cek yang exact match dulu
                             matches = [k for k in pdf_map.keys() if k == target]
@@ -1097,9 +1106,90 @@ if menu == "MCU Tools":
     st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
     
     mcu_tool = st.selectbox("Pilih Fitur MCU", [
+        "📂 Organise by Excel (Original Logic) - Fitur Baru", # FITUR BARU DISINI
         "📊 Dashboard Analisis Data MCU (Excel)", 
         "📝 Konversi Laporan MCU (PDF) ke Data", 
     ])
+    
+    # === LOGIC FOR NEW FEATURE: Organise by Excel (Original Logic) ===
+    if mcu_tool == "📂 Organise by Excel (Original Logic) - Fitur Baru":
+        st.markdown("---")
+        st.subheader("📂 Organise by Excel (Original Logic)")
+        st.info("Fitur ini akan membuat struktur folder di dalam file ZIP berdasarkan data Excel dan nama file PDF yang diunggah.")
+        
+        excel_up = st.file_uploader("Upload Excel (No_MCU, Nama, Departemen, JABATAN) or (filename,target_folder)", type=["xlsx","csv"], key="mcu_organize_excel")
+        pdfs = st.file_uploader("Upload PDF files (multiple)", type="pdf", accept_multiple_files=True, key="mcu_organize_pdf")
+        
+        if excel_up and pdfs and st.button("Process MCU"):
+            try:
+                with st.spinner("Memproses MCU..."):
+                    # Baca Excel/CSV
+                    if excel_up.name.lower().endswith(".csv"):
+                        df = pd.read_csv(io.BytesIO(excel_up.read()))
+                    else:
+                        df = pd.read_excel(io.BytesIO(excel_up.read()))
+                        
+                    pdf_map = {p.name: p.read() for p in pdfs}
+                    out_map = {}
+                    not_found = []
+                    
+                    # Logika Organise by Excel (dari input user)
+                    if all(c in df.columns for c in ["No_MCU","Nama","Departemen","JABATAN"]):
+                        st.info("Mode: Organisasi berdasarkan kolom **No_MCU, Departemen, JABATAN** (Struktur: Dept/Jabatan/File.pdf).")
+                        total = len(df)
+                        prog = st.progress(0)
+                        for idx, r in df.iterrows():
+                            # Pastikan konversi ke string dan strip.
+                            # Mengganti karakter yang tidak valid untuk nama folder/file di ZIP dengan underscore
+                            no = str(r["No_MCU"]).strip()
+                            # Cleaning folder names for ZIP paths
+                            dept = str(r["Departemen"]).strip().replace('/', '_').replace('\\', '_') if not pd.isna(r["Departemen"]) else "Unknown_Dept"
+                            jab = str(r["JABATAN"]).strip().replace('/', '_').replace('\\', '_') if not pd.isna(r["JABATAN"]) else "Unknown_JABATAN"
+                            
+                            # Mencari PDF yang namanya diawali dengan No_MCU
+                            # Hati-hati: gunakan .lower() jika nama file mungkin tidak case-sensitive
+                            matches = [k for k in pdf_map.keys() if k.startswith(no)] 
+                            
+                            if matches:
+                                # Hanya ambil match pertama jika ada banyak (asumsi 1 MCU = 1 PDF)
+                                out_map[f"{dept}/{jab}/{matches[0]}"] = pdf_map[matches[0]]
+                            else:
+                                not_found.append(no)
+                            prog.progress(int((idx+1)/total*100))
+                            
+                    elif "filename" in df.columns and "target_folder" in df.columns:
+                        st.info("Mode: Organisasi berdasarkan kolom **filename** dan **target_folder** (Struktur: Folder/File.pdf).")
+                        total = len(df)
+                        prog = st.progress(0)
+                        for idx, r in df.iterrows():
+                            fn = str(r["filename"]).strip()
+                            # Cleaning folder name
+                            tgt = str(r["target_folder"]).strip().replace('/', '_').replace('\\', '_')
+                            
+                            if fn in pdf_map:
+                                out_map[f"{tgt}/{fn}"] = pdf_map[fn]
+                            else:
+                                not_found.append(fn)
+                            prog.progress(int((idx+1)/total*100))
+                            
+                    else:
+                        st.error("Format Excel/CSV tidak valid. Diperlukan kolom: **No_MCU, Nama, Departemen, JABATAN** ATAU **filename, target_folder**.")
+                        
+                # Hasil Download
+                if out_map:
+                    zipb = make_zip_from_map(out_map)
+                    st.download_button("Download MCU zip", zipb, file_name="mcu_structured.zip", mime="application/zip")
+                    st.success(f"✅ {len(out_map)} file berhasil diproses dan diatur strukturnya.")
+                else:
+                    st.warning("Tidak ada file yang berhasil diproses.")
+                    
+                if not_found:
+                    st.warning(f"{len(not_found)} ID/File tidak ditemukan di file PDF yang diunggah. Contoh: {not_found[:10]}")
+                    
+            except Exception:
+                st.error(f"Terjadi kesalahan saat memproses data. Cek format Excel Anda: {traceback.format_exc()}")
+    # === END OF NEW FEATURE LOGIC ===
+
 
     if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel)":
         st.markdown("---")
@@ -1150,7 +1240,7 @@ if menu == "Tentang":
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
     - 📸 **Kompres Foto & Gambar**
     - 📎 **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename)
-    - 🩺 **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data)
+    - 🩺 **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data, **Organise by Excel**)
     - 📁 **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
 
     <br>
