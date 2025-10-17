@@ -1,8 +1,8 @@
 """
-KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBAHARUI & FIX SYNTAX ERROR
-- Memperbaiki SyntaxError: 'return' outside function.
-- Menambahkan FITUR BARU: Batch Rename PDF dan Gambar berdasarkan Excel.
-- FIX: Mengganti placeholder ikon '??' dan '???' dengan emoji yang sesuai.
+KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
+- Mengganti semua placeholder ikon '??' dan '???' dengan emoji/ikon yang relevan.
+- Memperbarui CSS untuk tampilan yang lebih modern dan menarik.
+- Menggunakan st.container dan st.columns untuk layout Dashboard yang rapi.
 """
 
 import os
@@ -77,10 +77,7 @@ def try_encrypt(writer, password: str):
             writer.encrypt(user_pwd=password, owner_pwd=password)
 
 def rotate_page_safe(page, angle):
-    """
-    Fungsi untuk rotasi halaman PDF.
-    (Ini adalah fungsi yang menampung 'return' pada baris 374/379 di script lama)
-    """
+    """Fungsi untuk rotasi halaman PDF."""
     try:
         page.rotate(angle)
     except Exception:
@@ -100,8 +97,8 @@ def navigate_to(target_menu):
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
 LOGO_PATH = os.path.join("assets", "logo.png")
-# FIX: Mengganti placeholder ikon (???) dengan ? (wrench) jika logo tidak ditemukan
-page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "???" 
+# Menggunakan emoji toolbox ? sebagai fallback ikon
+page_icon = LOGO_PATH if os.path.exists(LOGO_PATH) else "🛠️" 
 st.set_page_config(page_title="KAY App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
 # CSS / Theme
@@ -115,7 +112,7 @@ section[data-testid="stSidebar"],
     visibility: hidden !important;
     display: none !important;
     width: 0 !important;
-padding: 0 !important;
+    padding: 0 !important;
 }
 
 /* 2. Hilangkan logo GitHub 'Fork' */
@@ -128,19 +125,19 @@ padding: 0 !important;
 .stApp {
     background: linear-gradient(180deg, #e9f2ff 0%, #f4f9ff 100%); 
     color: #002b5b;
-font-family: 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
-/* 4. Tombol modern glossy */
+/* 4. Tombol modern glossy - Diperkuat */
 div.stButton > button {
     background: linear-gradient(90deg, #5dade2, #3498db);
-color: white; 
+    color: white; 
     border: none;
     border-radius: 12px;
-    padding: 0.5rem 1rem;
+    padding: 0.7rem 1.2rem; /* Padding lebih besar */
     font-weight: 600;
     transition: 0.2s;
-box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4); 
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4); 
     cursor: pointer;
     width: auto;
 }
@@ -149,44 +146,49 @@ box-shadow: 0 4px 8px rgba(52, 152, 219, 0.4);
 div.stButton > button[key*="dash_"], 
 div.stButton > button[key*="back_"] {
     width: 100%;
-margin-top: 10px; 
+    margin-top: 10px; 
 }
 
 div.stButton > button:hover {
     background: linear-gradient(90deg, #3498db, #2e86c1); 
-    transform: scale(1.01);
-box-shadow: 0 6px 14px rgba(52, 152, 219, 0.5); 
+    transform: scale(1.02); /* Skala hover lebih jelas */
+    box-shadow: 0 8px 18px rgba(52, 152, 219, 0.6); /* Shadow lebih kuat */
 }
 
-/* 5. Card fitur */
+/* 5. Card fitur - Diperkuat */
 .feature-card {
     background: white;
-border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
-    padding: 18px; 
-    transition: 0.2s; 
+    border-radius: 16px; /* Radius lebih besar */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* Shadow lebih tegas */
+    padding: 24px; /* Padding lebih besar */
+    transition: all 0.3s ease-in-out; /* Transisi untuk semua properti */
     border: 1px solid #d0e3ff; 
     display: flex;
     flex-direction: column;
-justify-content: space-between;
+    justify-content: space-between;
     height: 100%; 
 }
 .feature-card:hover {
-    box-shadow: 0 6px 18px rgba(0,0,0,0.10);
-    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15); /* Shadow hover sangat kuat */
+    transform: translateY(-5px); /* Efek 'terangkat' lebih tinggi */
+    border-color: #3498db; /* Border highlight */
 }
 
 /* 6. Small UI tweaks */
-h1 { color: #1b4f72; font-weight: 800;
-}
+h1 { color: #1b4f72; font-weight: 800; }
+h2, h3, h4 { color: #2e86c1; }
 .stInfo, .stWarning {
-    border-radius: 8px;
-padding: 1rem;
+    border-radius: 12px; /* Radius lebih besar */
+    padding: 1rem;
 }
 .stInfo { background-color: #e3f2fd; border-left: 5px solid #2196f3; }
-.stWarning { background-color: #fff3e0; border-left: 5px solid #ff9800;
-}
+.stWarning { background-color: #fff3e0; border-left: 5px solid #ff9800; }
 
+/* 7. Kontainer untuk merapikan section */
+.dashboard-container {
+    padding: 20px 0;
+    margin-bottom: 20px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -198,78 +200,92 @@ if "menu_selection" not in st.session_state:
     
 menu = st.session_state.menu_selection
 
-# ----------------- Fungsi Tombol Kembali (Perapihan Ikon) -----------------
+# ----------------- Fungsi Tombol Kembali (Ikon Diperbaiki) -----------------
 def add_back_to_dashboard_button():
-    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur dengan ikon ?."""
-    # FIX: Mengganti "???" dengan ikon ?
-    if st.button("?? Kembali ke Dashboard", key="back_to_dash"):
+    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur dengan ikon 🏠."""
+    if st.button("🏠 Kembali ke Dashboard", key="back_to_dash"):
         navigate_to("Dashboard")
     st.markdown("---")
 
 # ----------------- Halaman Header (Selalu ditampilkan) -----------------
-if os.path.exists(LOGO_PATH):
-    try:
-        st.image(LOGO_PATH, width=110)
-    except Exception:
-        st.write("KAY App")
-st.title("KAY App – Tools MCU")
-st.markdown("Aplikasi serbaguna untuk pengolahan dokumen, PDF, gambar, dan data MCU — UI elegan + fungsi lengkap.")
+header_col1, header_col2 = st.columns([1, 4])
+with header_col1:
+    if os.path.exists(LOGO_PATH):
+        try:
+            st.image(LOGO_PATH, width=100)
+        except Exception:
+            st.write("KAY App")
+
+with header_col2:
+    st.title("KAY App – Tools MCU")
+    st.markdown("Aplikasi serbaguna untuk pengolahan dokumen, PDF, gambar, dan data MCU — UI elegan + fungsi lengkap.")
+
 st.markdown("---")
 
 
 # -----------------------------------------------------------------------------
-# ----------------- FUNGSI UTAMA (Diperbarui untuk fitur baru) -----------------
+# ----------------- FUNGSI UTAMA -----------------
 # -----------------------------------------------------------------------------
 
 # -------------- Dashboard (Menu Utama) --------------
 if menu == "Dashboard":
-    st.markdown("### Pilih Fitur Utama")
+    
+    st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
+    st.markdown("## ✨ Pilih Fitur Utama")
     
     # ------------------ FITUR UTAMA ------------------
     cols1 = st.columns(3)
 
     # Kompres Foto
     with cols1[0]:
-        # Tambahkan notifikasi "Baru" untuk rename
-        st.markdown('<div class="feature-card"><b>Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, **Batch Rename Sesuai Excel (Baru)**.</div>', unsafe_allow_html=True)
-        if st.button("Buka Kompres Foto", key="dash_foto"):
-            navigate_to("Kompres Foto")
+        with st.container():
+            # Ikon: 🖼️ (Picture) atau 📸 (Camera)
+            st.markdown('<div class="feature-card"><b>🖼️ Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            if st.button("Buka Kompres Foto", key="dash_foto"):
+                navigate_to("Kompres Foto")
 
     # PDF Tools
     with cols1[1]:
-        # Tambahkan notifikasi "Baru" untuk rename
-        st.markdown('<div class="feature-card"><b>PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & **Batch Rename Sesuai Excel (Baru)**.</div>', unsafe_allow_html=True)
-        if st.button("Buka PDF Tools", key="dash_pdf"):
-            navigate_to("PDF Tools")
+        with st.container():
+            # Ikon: 📄 (Page/Document) atau 📎 (Clip)
+            st.markdown('<div class="feature-card"><b>📎 PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            if st.button("Buka PDF Tools", key="dash_pdf"):
+                navigate_to("PDF Tools")
 
     # MCU Tools
     with cols1[2]:
-        st.markdown('<div class="feature-card"><b>MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data.</div>', unsafe_allow_html=True)
-        if st.button("Buka MCU Tools", key="dash_mcu"):
-            navigate_to("MCU Tools")
+        with st.container():
+            # Ikon: 🩺 (Stethoscope) atau 📊 (Chart)
+            st.markdown('<div class="feature-card"><b>🩺 MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data.</div>', unsafe_allow_html=True)
+            if st.button("Buka MCU Tools", key="dash_mcu"):
+                navigate_to("MCU Tools")
             
     # ------------------ FITUR LAINNYA ------------------
-    st.markdown("### Fitur Lainnya")
+    st.markdown("## ⚙️ Fitur Lainnya")
     cols2 = st.columns(3)
     
   
     # File Tools
     with cols2[0]:
-        # Tambahkan notifikasi "Baru" untuk rename
-        st.markdown('<div class="feature-card"><b>File Tools</b><br>Zip/unzip, konversi dasar, Batch Rename Gambar & PDF.</div>', unsafe_allow_html=True)
-        if st.button("Buka File Tools", key="dash_file"):
-            navigate_to("File Tools")
+        with st.container():
+            # Ikon: 📁 (Folder)
+            st.markdown('<div class="feature-card"><b>📁 File Tools</b><br>Zip/unzip, konversi dasar, Batch Rename Gambar & PDF.</div>', unsafe_allow_html=True)
+            if st.button("Buka File Tools", key="dash_file"):
+                navigate_to("File Tools")
 
     # Tentang
     with cols2[1]:
-        st.markdown('<div class="feature-card"><b>Tentang Aplikasi</b><br>Informasi dan kebutuhan library.</div>', unsafe_allow_html=True)
-        if st.button("Lihat Tentang", key="dash_about"):
-            navigate_to("Tentang")
+        with st.container():
+            # Ikon: 💡 (Lightbulb) atau ℹ️ (Info)
+            st.markdown('<div class="feature-card"><b>ℹ️ Tentang Aplikasi</b><br>Informasi dan kebutuhan library.</div>', unsafe_allow_html=True)
+            if st.button("Lihat Tentang", key="dash_about"):
+                navigate_to("Tentang")
 
     # Kolom kosong (dibuat 3 kolom agar layout tetap rapi)
     with cols2[2]:
         st.markdown('<div class="feature-card" style="visibility:hidden; height: 100%;">.</div>', unsafe_allow_html=True)
         
+    st.markdown('</div>', unsafe_allow_html=True) # Tutup dashboard-container
 
     st.markdown("---")
     st.info("Semua proses berlangsung lokal di perangkat server tempat Streamlit dijalankan.")
@@ -277,17 +293,18 @@ if menu == "Dashboard":
 # -------------- Kompres Foto / Image Tools --------------
 if menu == "Kompres Foto":
     add_back_to_dashboard_button() 
-    st.subheader("Kompres & Kelola Foto/Gambar")
+    st.subheader("🖼️ Kompres & Kelola Foto/Gambar")
     
     # Sub-menu untuk gambar
     img_tool = st.selectbox("Pilih Fitur Gambar", [
-        "Kompres Foto (Batch)", 
-        "?? Batch Rename/Format Gambar (Sequential)", # FIX: Mengganti ikon
-        "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)" # FIX: Mengganti ikon
+        "📸 Kompres Foto (Batch)", 
+        "🔢 Batch Rename/Format Gambar (Sequential)", # FIX: Ikon angka
+        "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)" # FIX: Ikon clipboard
         ])
 
-    if img_tool == "Kompres Foto (Batch)":
+    if img_tool == "📸 Kompres Foto (Batch)":
         st.markdown("---")
+        st.markdown("### 📸 Kompres Foto (Batch)")
         uploaded = st.file_uploader("Unggah gambar (jpg/png) — bisa banyak", type=["jpg","jpeg","png"], accept_multiple_files=True)
         quality = st.slider("Kualitas JPEG", 10, 95, 75)
         max_side = st.number_input("Max side (px)", min_value=100, max_value=4000, value=1200)
@@ -309,15 +326,15 @@ if menu == "Kompres Foto":
                     prog.progress(int((i+1)/total*100))
             if out_map:
                 zipb = make_zip_from_map(out_map)
-                st.success(f"{len(out_map)} file berhasil dikompres")
+                st.success(f"✅ {len(out_map)} file berhasil dikompres")
                 st.download_button("Unduh Hasil (ZIP)", zipb, file_name="foto_kompres.zip", mime="application/zip")
             else:
                 st.warning("Tidak ada file berhasil dikompres.")
 
     # --- FITUR Batch Rename Gambar (Sequential) ---
-    elif img_tool == "?? Batch Rename/Format Gambar (Sequential)": # FIX: Mengganti ikon
+    elif img_tool == "🔢 Batch Rename/Format Gambar (Sequential)": 
         st.markdown("---")
-        st.subheader("?? Ganti Nama & Ubah Format Gambar Massal (Sequential)") # FIX: Mengganti ikon
+        st.markdown("### 🔢 Ganti Nama & Ubah Format Gambar Massal (Sequential)")
         uploaded_files = st.file_uploader(
             "Unggah file Gambar (JPG, PNG, dll.):", 
             type=["jpg", "jpeg", "png", "webp"], 
@@ -356,14 +373,14 @@ if menu == "Kompres Foto":
                                     img.save(img_io, format=output_format_pil) 
                                 img_io.seek(0)
                                 zf.writestr(new_filename, img_io.read())
-                        st.success(f"?? Berhasil memproses {len(uploaded_files)} file.") # FIX: Mengganti ikon
+                        st.success(f"✅ Berhasil memproses {len(uploaded_files)} file.") 
                         st.download_button("Unduh File ZIP Hasil Batch", data=output_zip.getvalue(), file_name="hasil_batch_gambar.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
     # --- FITUR BARU 1: Batch Rename Gambar Sesuai Excel ---
-    elif img_tool == "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)": # FIX: Mengganti ikon
+    elif img_tool == "📋 Batch Rename Gambar Sesuai Excel (Fitur Baru)": 
         st.markdown("---")
-        st.subheader("?? Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel") # FIX: Mengganti ikon
+        st.markdown("### 📋 Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel")
         st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (termasuk ekstensi, misal: `foto_123.jpg`) dan **`nama_baru`** (termasuk ekstensi, misal: `ID_001.png`).")
         
         excel_up = st.file_uploader("Unggah Excel/CSV untuk daftar nama:", type=["xlsx", "csv"], key="rename_img_excel_up")
@@ -408,7 +425,7 @@ if menu == "Kompres Foto":
                         # 4. Buat ZIP
                         if out_map:
                             zipb = make_zip_from_map(out_map)
-                            st.success(f"?? {len(out_map)} file berhasil diganti namanya dan dikemas.") # FIX: Mengganti ikon
+                            st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
                             st.download_button("Unduh Hasil (ZIP)", zipb, file_name="gambar_renamed_by_excel.zip", mime="application/zip")
                         else:
                             st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
@@ -422,46 +439,46 @@ if menu == "Kompres Foto":
 # -------------- PDF Tools (Diperbarui Menu dan Fitur) --------------
 if menu == "PDF Tools":
     add_back_to_dashboard_button() 
-    st.subheader("PDF Tools")
+    st.subheader("📎 PDF Tools")
 
-    # Menu yang lebih terstruktur dan ditambahkan fitur baru
+    # Menu yang lebih terstruktur dan ditambahkan fitur baru dengan ikon yang jelas
     pdf_options = [
         "--- Pilih Tools ---",
-        "?? Gabung PDF", # FIX: Mengganti ikon
-        "?? Pisah PDF", # FIX: Mengganti ikon
-        "?? Reorder/Hapus Halaman PDF", # FIX: Mengganti ikon
-        "?? Batch Rename PDF (Sequential)", # FIX: Mengganti ikon
-        "?? Batch Rename PDF Sesuai Excel (Fitur Baru)", # FIX: Mengganti ikon
-        "?? Image -> PDF", # FIX: Mengganti ikon
-        "?? PDF -> Image", # FIX: Mengganti ikon
-        "?? Ekstraksi Teks/Tabel", # FIX: Mengganti ikon
-        "?? Konversi PDF", # FIX: Mengganti ikon
-        "?? Proteksi PDF", # FIX: Mengganti ikon
-        "?? Utility PDF", # FIX: Mengganti ikon (sebelumnya ???)
+        "➕ Gabung PDF", # FIX: Ikon Plus
+        "✂️ Pisah PDF", # FIX: Ikon Gunting
+        "🔄 Reorder/Hapus Halaman PDF", # FIX: Ikon Refresh/Cycle
+        "🔤 Batch Rename PDF (Sequential)", # FIX: Ikon Alphabet
+        "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)", # FIX: Ikon Memo
+        "🖼️ Image -> PDF", # FIX: Ikon Gambar
+        "📸 PDF -> Image", # FIX: Ikon Kamera
+        "🔍 Ekstraksi Teks/Tabel", # FIX: Ikon Kaca Pembesar
+        "🔁 Konversi PDF", # FIX: Ikon Repeat
+        "🔒 Proteksi PDF", # FIX: Ikon Kunci
+        "🛠️ Utility PDF", # FIX: Ikon Toolbox
     ]
     
     tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
 
     # Mapping
     if tool_select == "--- Pilih Tools ---": tool = None
-    elif tool_select == "?? Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) # FIX: Mengganti ikon
-    elif tool_select == "?? Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) # FIX: Mengganti ikon
-    elif tool_select == "?? Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) # FIX: Mengganti ikon
-    elif tool_select == "?? Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) # FIX: Mengganti ikon
-    elif tool_select == "?? Gabung PDF": tool = "Gabung PDF" # FIX: Mengganti ikon
-    elif tool_select == "?? Pisah PDF": tool = "Pisah PDF" # FIX: Mengganti ikon
-    elif tool_select == "?? Reorder/Hapus Halaman PDF": tool = "Reorder PDF" # FIX: Mengganti ikon
-    elif tool_select == "?? Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" # FIX: Mengganti ikon
-    elif tool_select == "?? Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" # FIX: Mengganti ikon
-    elif tool_select == "?? PDF -> Image": tool = "PDF -> Image" # FIX: Mengganti ikon
-    elif tool_select == "?? Image -> PDF": tool = "Image -> PDF" # FIX: Mengganti ikon
+    elif tool_select == "🔍 Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) # FIX: Ikon
+    elif tool_select == "🔁 Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) # FIX: Ikon
+    elif tool_select == "🔒 Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) # FIX: Ikon
+    elif tool_select == "🛠️ Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) # FIX: Ikon
+    elif tool_select == "➕ Gabung PDF": tool = "Gabung PDF" # FIX: Ikon
+    elif tool_select == "✂️ Pisah PDF": tool = "Pisah PDF" # FIX: Ikon
+    elif tool_select == "🔄 Reorder/Hapus Halaman PDF": tool = "Reorder PDF" # FIX: Ikon
+    elif tool_select == "🔤 Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" # FIX: Ikon
+    elif tool_select == "📝 Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" # FIX: Ikon
+    elif tool_select == "📸 PDF -> Image": tool = "PDF -> Image" # FIX: Ikon
+    elif tool_select == "🖼️ Image -> PDF": tool = "Image -> PDF" # FIX: Ikon
     else: tool = None
     
 
     # --- FITUR BARU 2: Batch Rename PDF Sesuai Excel ---
     if tool == "Batch Rename PDF Excel":
         st.markdown("---")
-        st.subheader("?? Ganti Nama File PDF Berdasarkan Excel") # FIX: Mengganti ikon
+        st.markdown("### 📝 Ganti Nama File PDF Berdasarkan Excel") 
         st.markdown("Unggah banyak file PDF dan ganti namanya sesuai daftar di Excel/CSV.")
         st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (misal: `ID_123.pdf`) dan **`nama_baru`** (misal: `Hasil_123.pdf`).")
 
@@ -502,7 +519,7 @@ if menu == "PDF Tools":
                         # 4. Buat ZIP
                         if out_map:
                             zipb = make_zip_from_map(out_map)
-                            st.success(f"?? {len(out_map)} file berhasil diganti namanya dan dikemas.") # FIX: Mengganti ikon
+                            st.success(f"✅ {len(out_map)} file berhasil diganti namanya dan dikemas.") 
                             st.download_button("Unduh Hasil (ZIP)", zipb, file_name="pdf_renamed_by_excel.zip", mime="application/zip")
                         else:
                             st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
@@ -516,7 +533,7 @@ if menu == "PDF Tools":
     # --- FITUR Batch Rename PDF (Sequential) ---
     if tool == "Batch Rename PDF Seq":
         st.markdown("---")
-        st.subheader("?? Ganti Nama File PDF Massal (Sequential)") # FIX: Mengganti ikon
+        st.markdown("### 🔤 Ganti Nama File PDF Massal (Sequential)") 
         uploaded_files = st.file_uploader("Unggah file PDF (multiple):", type=["pdf"], accept_multiple_files=True, key="batch_rename_pdf_uploader_seq")
     
         if uploaded_files:
@@ -533,14 +550,14 @@ if menu == "PDF Tools":
                             for i, file in enumerate(uploaded_files, start_num):
                                 new_filename = f"{new_prefix}_{i:03d}.pdf"
                                 zf.writestr(new_filename, file.read())
-                        st.success(f"?? Berhasil mengganti nama {len(uploaded_files)} file.") # FIX: Mengganti ikon
+                        st.success(f"✅ Berhasil mengganti nama {len(uploaded_files)} file.") 
                         st.download_button("Unduh File ZIP Hasil Rename", data=output_zip.getvalue(), file_name="pdf_renamed.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
-    # --- LOGIKA FITUR PDF LAINNYA (tidak diubah) ---
+    # --- LOGIKA FITUR PDF LAINNYA (dengan ikon diperbarui) ---
     if tool == "Reorder PDF":
         st.markdown("---")
-        st.subheader("?? Reorder atau Hapus Halaman PDF") # FIX: Mengganti ikon
+        st.markdown("### 🔄 Reorder atau Hapus Halaman PDF") 
         st.markdown("Unggah file PDF Anda dan tentukan urutan halaman baru (contoh: `2, 1, 3` untuk membalik, atau `1, 3` untuk menghapus halaman 2).")
 
         f = st.file_uploader("Unggah 1 file PDF:", type="pdf", key="reorder_pdf_uploader")
@@ -581,7 +598,7 @@ if menu == "PDF Tools":
                         pdf_buffer.seek(0)
 
                         st.download_button(
-                            "?? Unduh Hasil PDF (Reordered)", # FIX: Mengganti ikon
+                            "⬇️ Unduh Hasil PDF (Reordered)", # FIX: Ikon Download
                             data=pdf_buffer,
                             file_name="pdf_reordered.pdf",
                             mime="application/pdf"
@@ -599,6 +616,7 @@ if menu == "PDF Tools":
 
     if tool == "Gabung PDF":
         st.markdown("---")
+        st.markdown("### ➕ Gabung PDF")
         files = st.file_uploader("Upload PDFs (multiple):", type="pdf", accept_multiple_files=True)
         if files and st.button("Gabung"):
             try:
@@ -616,6 +634,7 @@ if menu == "PDF Tools":
 
     if tool == "Pisah PDF":
         st.markdown("---")
+        st.markdown("### ✂️ Pisah PDF")
         f = st.file_uploader("Upload single PDF:", type="pdf")
         if f and st.button("Split to pages (ZIP)"):
             try:
@@ -630,9 +649,10 @@ if menu == "PDF Tools":
                 st.download_button("Download pages.zip", zipb, file_name="pages.zip", mime="application/zip")
             except Exception:
                 st.error(traceback.format_exc())
-
+                
     if tool == "Hapus Halaman":
         st.markdown("---")
+        st.markdown("### 🗑️ Hapus Halaman dari PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         page_no = st.number_input("Halaman yang dihapus (1-based)", min_value=1, value=1)
         if f and st.button("Hapus Halaman"):
@@ -650,6 +670,7 @@ if menu == "PDF Tools":
 
     if tool == "Rotate PDF":
         st.markdown("---")
+        st.markdown("### 📐 Putar Halaman PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         angle = st.selectbox("Rotate degrees", [90, 180, 270])
         if f and st.button("Rotate"):
@@ -667,6 +688,7 @@ if menu == "PDF Tools":
 
     if tool == "Kompres PDF":
         st.markdown("---")
+        st.markdown("### 📦 Kompres Ukuran PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Compress (rewrite)"):
             try:
@@ -682,6 +704,7 @@ if menu == "PDF Tools":
 
     if tool == "Watermark PDF":
         st.markdown("---")
+        st.markdown("### 💧 Tambah Watermark ke PDF")
         base = st.file_uploader("Base PDF", type="pdf")
         watermark = st.file_uploader("Watermark PDF (single page)", type="pdf")
         if base and watermark and st.button("Apply watermark"):
@@ -707,6 +730,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Image":
         st.markdown("---")
+        st.markdown("### 📸 PDF ke Gambar (PNG/JPEG)")
         st.info("Requires pdf2image + poppler (server).")
         f = st.file_uploader("Upload PDF", type="pdf")
         dpi = st.slider("DPI", 100, 300, 150)
@@ -740,6 +764,7 @@ if menu == "PDF Tools":
 
     if tool == "Image -> PDF":
         st.markdown("---")
+        st.markdown("### 🖼️ Gambar ke PDF")
         imgs = st.file_uploader("Upload images", type=["jpg","png","jpeg"], accept_multiple_files=True)
         if imgs and st.button("Images -> PDF"):
             try:
@@ -757,6 +782,7 @@ if menu == "PDF Tools":
 
     if tool == "Extract Text":
         st.markdown("---")
+        st.markdown("### 📝 Ekstraksi Teks dari PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Extract text"):
             try:
@@ -779,6 +805,7 @@ if menu == "PDF Tools":
 
     if tool == "Extract Tables -> Excel":
         st.markdown("---")
+        st.markdown("### 📉 Ekstraksi Tabel ke Excel")
         if pdfplumber is None:
             st.error("pdfplumber is required for table extraction (pip install pdfplumber)")
         else:
@@ -805,6 +832,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Word":
         st.markdown("---")
+        st.markdown("### 📄 Konversi PDF ke Word (Text-based)")
         if Document is None:
             st.error("python-docx is required for PDF->Word (pip install python-docx)")
         else:
@@ -824,6 +852,7 @@ if menu == "PDF Tools":
 
     if tool == "PDF -> Excel (text)":
         st.markdown("---")
+        st.markdown("### 📊 Konversi PDF ke Excel (Text per Halaman)")
         f = st.file_uploader("Upload PDF", type="pdf")
         if f and st.button("Convert to Excel (text)"):
             try:
@@ -840,6 +869,7 @@ if menu == "PDF Tools":
 
     if tool == "Encrypt PDF":
         st.markdown("---")
+        st.markdown("### 🔑 Kunci (Encrypt) PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         pw = st.text_input("Password", type="password")
         if f and pw and st.button("Encrypt"):
@@ -857,6 +887,7 @@ if menu == "PDF Tools":
 
     if tool == "Decrypt PDF":
         st.markdown("---")
+        st.markdown("### 🔓 Buka Kunci (Decrypt) PDF")
         f = st.file_uploader("Upload encrypted PDF", type="pdf")
         pw = st.text_input("Password for decryption", type="password")
         if f and pw and st.button("Decrypt"):
@@ -875,6 +906,7 @@ if menu == "PDF Tools":
 
     if tool == "Batch Lock (Excel)":
         st.markdown("---")
+        st.markdown("### 🔑 Batch Lock PDF Berdasarkan Daftar Excel")
         excel_file = st.file_uploader("Upload Excel (filename,password) or CSV", type=["xlsx","csv"])
         pdfs = st.file_uploader("Upload PDFs (multiple)", type="pdf", accept_multiple_files=True)
         if excel_file and pdfs and st.button("Batch Lock"):
@@ -922,6 +954,7 @@ if menu == "PDF Tools":
 
     if tool == "Preview PDF":
         st.markdown("---")
+        st.markdown("### 👁️ Preview PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         mode = st.radio("Preview mode", ["First page (fast)", "All pages (slow)"])
         if f and st.button("Show Preview"):
@@ -969,18 +1002,19 @@ if menu == "PDF Tools":
                 st.error(f"Gagal menampilkan preview. Pastikan Poppler terinstall untuk konversi ke gambar. Error: {e}")
                 traceback.print_exc()
 
+
 # -------------- File Tools --------------
 if menu == "File Tools":
     add_back_to_dashboard_button() 
-    st.subheader("File Tools")
+    st.subheader("📁 File Tools")
 
     file_tool = st.selectbox("Pilih Fitur File", [
-        "Zip / Unzip File", 
-        "Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", 
-        "Cek Keberadaan Library"
+        "📦 Zip / Unzip File", # FIX: Ikon Box
+        "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", # FIX: Ikon Repeat
+        "🛠️ Cek Keberadaan Library" # FIX: Ikon Toolbox
     ])
 
-    if file_tool == "Zip / Unzip File":
+    if file_tool == "📦 Zip / Unzip File":
         st.markdown("---")
         st.subheader("Kompres ke ZIP atau Ekstrak dari ZIP")
         mode = st.radio("Pilih Mode", ["Compress to ZIP", "Extract from ZIP"])
@@ -1015,7 +1049,7 @@ if menu == "File Tools":
                     st.error(f"Gagal ekstrak: {e}")
 
 
-    if file_tool == "Konversi Dasar (misal: TXT/CSV/JSON -> Excel)":
+    if file_tool == "🔁 Konversi Dasar (misal: TXT/CSV/JSON -> Excel)":
         st.markdown("---")
         st.subheader("Konversi Data ke Excel")
         f = st.file_uploader("Unggah file (TXT, CSV, JSON)", type=["txt", "csv", "json"])
@@ -1039,7 +1073,7 @@ if menu == "File Tools":
             except Exception as e:
                 st.error(f"Gagal memproses file: {e}")
 
-    if file_tool == "Cek Keberadaan Library":
+    if file_tool == "🛠️ Cek Keberadaan Library":
         st.markdown("---")
         st.subheader("Status Library Tambahan")
         st.info("Fitur ini membantu Anda mengecek apakah library Python yang dibutuhkan sudah terinstall di lingkungan Streamlit ini.")
@@ -1052,22 +1086,22 @@ if menu == "File Tools":
         }
 
         for name, is_available in libs.items():
-            status = "? Tersedia" if is_available else "? Tidak Tersedia"
+            status = "✅ Tersedia" if is_available else "❌ Tidak Tersedia"
             st.markdown(f"- **{name}**: {status}")
 
 
 # -------------- MCU Tools --------------
 if menu == "MCU Tools":
     add_back_to_dashboard_button() 
-    st.subheader("MCU Tools (Analisis Data Kesehatan)")
+    st.subheader("🩺 MCU Tools (Analisis Data Kesehatan)")
     st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
     
     mcu_tool = st.selectbox("Pilih Fitur MCU", [
-        "Dashboard Analisis Data MCU (Excel)",
-        "Konversi Laporan MCU (PDF) ke Data",
+        "📊 Dashboard Analisis Data MCU (Excel)", # FIX: Ikon Chart
+        "📝 Konversi Laporan MCU (PDF) ke Data", # FIX: Ikon Memo
     ])
 
-    if mcu_tool == "Dashboard Analisis Data MCU (Excel)":
+    if mcu_tool == "📊 Dashboard Analisis Data MCU (Excel)":
         st.markdown("---")
         st.subheader("Visualisasi & Analisis Hasil MCU Massal")
         st.info("Unggah file Excel yang berisi data hasil MCU.")
@@ -1097,7 +1131,7 @@ if menu == "MCU Tools":
             except Exception as e:
                 st.error(f"Gagal membaca file: {e}")
 
-    if mcu_tool == "Konversi Laporan MCU (PDF) ke Data":
+    if mcu_tool == "📝 Konversi Laporan MCU (PDF) ke Data":
         st.markdown("---")
         st.subheader("Ekstraksi Data dari Laporan MCU PDF")
         st.warning("Fitur ini sangat bergantung pada struktur dan format PDF. Mungkin memerlukan konfigurasi kustom.")
@@ -1111,20 +1145,23 @@ if menu == "MCU Tools":
 # -------------- Tentang (Diperbarui) --------------
 if menu == "Tentang":
     add_back_to_dashboard_button() 
-    st.subheader("Tentang KAY App – Tools MCU")
+    st.subheader("ℹ️ Tentang KAY App – Tools MCU")
     st.markdown("""
     **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
-    - Kompres foto & gambar
-    - Pengelolaan dokumen PDF (gabung, pisah, proteksi, ekstraksi, **Reorder/Hapus Halaman**, **Batch Rename PDF**)
-    - Analisis & pengolahan hasil Medical Check Up (MCU) (**Dashboard Analisis Data**)
-    - Manajemen file & konversi dasar (**Batch Rename/Format Gambar**, **Batch Rename PDF**)
+    - 📸 **Kompres Foto & Gambar**
+    - 📎 **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename)
+    - 🩺 **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data)
+    - 📁 **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
 
+    <br>
+    
+    ### Kebutuhan Library Tambahan
     Beberapa fitur memerlukan library tambahan (instal di environment Anda):
     - `PyPDF2` (Dasar PDF)
     - `pdfplumber` untuk ekstraksi tabel teks: `pip install pdfplumber`
     - `python-docx` untuk menghasilkan .docx: `pip install python-docx`
     - `pdf2image` + poppler untuk konversi PDF->Gambar / Preview gambar: `pip install pdf2image`
-    - `pandas` & `openpyxl` untuk Analisis MCU dan **Batch Rename by Excel**: `pip install pandas openpyxl`
+    - `pandas` & `openpyxl` untuk Analisis MCU dan Batch Rename by Excel: `pip install pandas openpyxl`
     """)
     st.info("Data diproses di server tempat Streamlit dijalankan. Untuk mengaktifkan semua fitur, pasang dependensi yang diperlukan.")
 
@@ -1132,6 +1169,6 @@ if menu == "Tentang":
 st.markdown("""
 <hr style="border: none; border-top: 1px solid #cfe2ff; margin-top: 1.5rem;">
 <p style="text-align: right; color: #a0a0a0; font-size: 0.8rem;">
-Powered by Streamlit | Developed by KAY - Final App 2024
+Developed by KAY - Final App 2024
 </p>
 """, unsafe_allow_html=True)
