@@ -1,24 +1,14 @@
-"""
-KAY App - FINAL SINGLE PAGE APP (SPA) - VERSI DIPERBARUI & TAMPILAN LEBIH MENARIK
-- **FITUR LAMA LENGKAP:** Gabung, Pisah, Encrypt, Reorder, Kompres Foto.
-- **FITUR BARU LENGKAP:** Batch Rename PDF/Gambar Sesuai Excel/Sequential, Organise MCU by Excel.
-- **FITUR DIPERBARUI:** Dashboard Analisis Data MCU Massal.
-- **FITUR TERBARU:** Terjemahan PDF ke Bahasa Lain.
-"""
+# ===============================================================
+# KAY App – FINAL FULL VERSION (Gabungan SCRIP 1 + SCRIP 2)
+# Bagian 1 : Setup, Import, UI, Dashboard dasar
+# ===============================================================
 
-import os
-import io
-import zipfile
-import shutil
-import traceback
-import tempfile
-import time
-
+import os, io, zipfile, shutil, traceback, tempfile, time
 import streamlit as st
 import pandas as pd
 from PIL import Image
 
-# PDF libs
+# === PDF & DOCX Libraries ===
 PdfReader = PdfWriter = None
 try:
     from PyPDF2 import PdfReader, PdfWriter
@@ -37,47 +27,52 @@ try:
 except Exception:
     pass
 
-# pdf2image: try both convert_from_bytes and convert_from_path availability
+# === pdf2image (optional) ===
 PDF2IMAGE_AVAILABLE = False
 convert_from_bytes = convert_from_path = None
 try:
-    from pdf2image import convert_from_bytes, convert_from_path 
+    from pdf2image import convert_from_bytes, convert_from_path
     PDF2IMAGE_AVAILABLE = True
 except Exception:
     try:
         from pdf2image import convert_from_path
         PDF2IMAGE_AVAILABLE = True
-        convert_from_bytes = None
     except Exception:
-        pass # convert_from_path and convert_from_bytes remain None
+        pass
 
-# New imports for translation
+# === Translator (deep_translator) ===
 Translator = None
 try:
-    from deep_translator import GoogleTranslator
-    Translator = GoogleTranslator
+    from deep_translator import GoogleTranslator as Translator
 except Exception:
-    pass # Peringatan akan ditampilkan di fitur Translate PDF jika gagal impor
+    pass
 
-# ----------------- Helpers -----------------
+# === QR CODE (baru dari SCRIP 2) ===
+import qrcode
+from PIL import Image as PILImage
+from io import BytesIO
+
+# ===============================================================
+# HELPERS
+# ===============================================================
+
 def make_zip_from_map(bytes_map: dict) -> bytes:
-    b = io.BytesIO()
-    with zipfile.ZipFile(b, "w") as z:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
         for name, data in bytes_map.items():
             z.writestr(name, data)
-    b.seek(0)
-    return b.getvalue()
+    buf.seek(0)
+    return buf.getvalue()
 
 def df_to_excel_bytes(df: pd.DataFrame) -> bytes:
     out = io.BytesIO()
-    # Menggunakan openpyxl sebagai engine
-    with pd.ExcelWriter(out, engine="openpyxl") as writer: 
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
         df.to_excel(writer, index=False)
     out.seek(0)
     return out.getvalue()
 
 def try_encrypt(writer, password: str):
-    """Fungsi untuk enkripsi PDF, menampung try/except"""
+    """Encrypt PDF safely"""
     try:
         writer.encrypt(password)
     except TypeError:
@@ -87,7 +82,6 @@ def try_encrypt(writer, password: str):
             writer.encrypt(user_pwd=password, owner_pwd=password)
 
 def rotate_page_safe(page, angle):
-    """Fungsi untuk rotasi halaman PDF."""
     try:
         page.rotate(angle)
     except Exception:
@@ -96,226 +90,154 @@ def rotate_page_safe(page, angle):
             page.__setitem__(NameObject("/Rotate"), NumberObject(angle))
         except Exception:
             pass
-          
+
 def navigate_to(target_menu):
-    """Helper global untuk navigasi antar halaman/menu."""
     st.session_state.menu_selection = target_menu
     try:
-        st.rerun() 
+        st.rerun()
     except AttributeError:
         st.experimental_rerun()
 
-# ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
-# LOGO_PATH = os.path.join("assets", "logo.png") # Dinonaktifkan karena file assets tidak tersedia
-LOGO_PATH = "???"
-# Menggunakan emoji toolbox ??? sebagai fallback ikon
-page_icon = LOGO_PATH
-st.set_page_config(page_title="Master App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
+# ===============================================================
+# STREAMLIT CONFIG & CSS
+# ===============================================================
 
-# CSS / Theme
+st.set_page_config(
+    page_title="KAY App – Tools Serbaguna",
+    page_icon="🧩",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 st.markdown("""
 <style>
-/* 1. HILANGKAN SEMUA UI SIDEBAR */
-[data-testid="stSidebarToggleButton"], 
-section[data-testid="stSidebar"],      
-[data-testid="stDecoration"]        
-{
-    visibility: hidden !important;
-    display: none !important;
-    width: 0 !important;
-    padding: 0 !important;
-}
-
-/* 2. Hilangkan logo GitHub 'Fork' */
-.stApp a[href*="github.com/"],
-.stApp header > div:last-child {
-    display: none !important;
-}
-
-/* 3. Background gradient lembut */
+[data-testid="stSidebarToggleButton"],
+section[data-testid="stSidebar"],
+[data-testid="stDecoration"] {display:none!important;}
 .stApp {
-    background: linear-gradient(180deg, #e9f2ff 0%, #f4f9ff 100%); 
-    color: #002b5b;
-    font-family: 'Inter', sans-serif;
+    background: linear-gradient(180deg,#e9f2ff 0%,#f4f9ff 100%);
+    color:#002b5b; font-family:'Inter',sans-serif;
 }
-
-/* 4. Tombol modern glossy - Diperkuat */
-div.stButton > button {
-    background: linear-gradient(90deg, #5dade2, #3498db);
-    color: white; 
-    border: none;
-    border-radius: 12px;
-    padding: 0.7rem 1.2rem; /* Padding lebih besar */
-    font-weight: 600;
-    transition: 0.2s;
-    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.4); 
-    cursor: pointer;
-    width: auto;
+div.stButton>button {
+    background:linear-gradient(90deg,#5dade2,#3498db);
+    color:white;border:none;border-radius:12px;
+    padding:.7rem 1.2rem;font-weight:600;
+    box-shadow:0 4px 10px rgba(52,152,219,.4);
+    transition:.2s;cursor:pointer;
 }
-
-/* Tombol Dashboard & Kembali dibuat lebar penuh di konteks masing-masing */
-div.stButton > button[key*="dash_"], 
-div.stButton > button[key*="back_"] {
-    width: 100%;
-    margin-top: 10px; 
+div.stButton>button:hover {
+    transform:scale(1.03);
+    box-shadow:0 8px 18px rgba(52,152,219,.6);
 }
-
-div.stButton > button:hover {
-    background: linear-gradient(90deg, #3498db, #2e86c1); 
-    transform: scale(1.02); /* Skala hover lebih jelas */
-    box-shadow: 0 8px 18px rgba(52, 152, 219, 0.6); /* Shadow lebih kuat */
-}
-
-/* 5. Card fitur - Diperkuat */
 .feature-card {
-    background: white;
-    border-radius: 16px; /* Radius lebih besar */
-    box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* Shadow lebih tegas */
-    padding: 24px; /* Padding lebih besar */
-    transition: all 0.3s ease-in-out; /* Transisi untuk semua properti */
-    border: 1px solid #d0e3ff; 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%; 
+    background:white;border-radius:16px;
+    box-shadow:0 4px 15px rgba(0,0,0,.08);
+    padding:24px;transition:.3s;border:1px solid #d0e3ff;
+    height:100%;display:flex;flex-direction:column;justify-content:space-between;
 }
 .feature-card:hover {
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15); /* Shadow hover sangat kuat */
-    transform: translateY(-5px); /* Efek 'terangkat' lebih tinggi */
-    border-color: #3498db; /* Border highlight */
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+    transform:translateY(-5px);border-color:#3498db;
 }
-
-/* 6. Small UI tweaks */
-h1 { color: #1b4f72; font-weight: 800; }
-h2, h3, h4 { color: #2e86c1; }
-.stInfo, .stWarning {
-    border-radius: 12px; /* Radius lebih besar */
-    padding: 1rem;
-}
-.stInfo { background-color: #e3f2fd; border-left: 5px solid #2196f3; }
-.stWarning { background-color: #fff3e0; border-left: 5px solid #ff9800; }
-
-/* 7. Kontainer untuk merapikan section */
-.dashboard-container {
-    padding: 20px 0;
-    margin-bottom: 20px;
-}
+h1{color:#1b4f72;font-weight:800;}
+h2,h3{color:#2e86c1;}
+.dashboard-container{padding:20px 0;margin-bottom:20px;}
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------- Global Header & Navigation Setup -----------------
+# ===============================================================
+# HEADER
+# ===============================================================
 
-# Inisialisasi session state
 if "menu_selection" not in st.session_state:
     st.session_state.menu_selection = "Dashboard"
-    
 menu = st.session_state.menu_selection
 
-# ----------------- Fungsi Tombol Kembali (Ikon Diperbaiki) -----------------
+header_col1, header_col2 = st.columns([1, 4])
+with header_col1:
+    st.markdown("<h1 style='font-size:3rem;'>🧩</h1>", unsafe_allow_html=True)
+with header_col2:
+    st.title("KAY App – Tools Serbaguna MCU + PDF + QR")
+    st.markdown("Solusi lengkap untuk PDF, gambar, MCU dan kode QR dalam satu aplikasi Streamlit elegan.")
+st.markdown("---")
+
+# ===============================================================
+# DASHBOARD UTAMA
+# ===============================================================
+
+if menu == "Dashboard":
+    st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
+    st.markdown("## ✳️ Pilih Fitur Utama")
+
+    cols1 = st.columns(3)
+    # Kompres Foto
+    with cols1[0]:
+        st.markdown('<div class="feature-card"><b>🖼️ Kompres Foto / Gambar</b><br>Perkecil ukuran file dan rename massal.</div>', unsafe_allow_html=True)
+        if st.button("Buka Kompres Foto", key="dash_foto"):
+            navigate_to("Kompres Foto")
+    # PDF Tools
+    with cols1[1]:
+        st.markdown('<div class="feature-card"><b>📄 PDF Tools</b><br>Gabung, pisah, proteksi, rename, translate PDF.</div>', unsafe_allow_html=True)
+        if st.button("Buka PDF Tools", key="dash_pdf"):
+            navigate_to("PDF Tools")
+    # MCU Tools
+    with cols1[2]:
+        st.markdown('<div class="feature-card"><b>🩺 MCU Tools</b><br>Analisis dan organisasi hasil MCU berbasis Excel.</div>', unsafe_allow_html=True)
+        if st.button("Buka MCU Tools", key="dash_mcu"):
+            navigate_to("MCU Tools")
+
+    st.markdown("## 🧰 Fitur Lainnya")
+    cols2 = st.columns(3)
+    with cols2[0]:
+        st.markdown('<div class="feature-card"><b>📂 File Tools</b><br>Zip/unzip, konversi dan rename batch.</div>', unsafe_allow_html=True)
+        if st.button("Buka File Tools", key="dash_file"):
+            navigate_to("File Tools")
+    with cols2[1]:
+        st.markdown('<div class="feature-card"><b>🔳 QR Code Generator ✨</b><br>Buat QR Code dengan logo khusus anda.</div>', unsafe_allow_html=True)
+        if st.button("Buka QR Code Generator", key="dash_qr"):
+            navigate_to("QR Code")
+    with cols2[2]:
+        st.markdown('<div class="feature-card"><b>ℹ️ Tentang</b><br>Informasi dan library yang dibutuhkan.</div>', unsafe_allow_html=True)
+        if st.button("Lihat Tentang", key="dash_about"):
+            navigate_to("Tentang")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.info("Semua proses berlangsung lokal pada server Streamlit anda.")
+
+# ---------------------------------------------------------------
+# Bagian 2 akan berisi semua fungsi fitur lengkap
+# ---------------------------------------------------------------
+# ===============================================================
+# BAGIAN 2 – Semua Fitur Utama: Foto, PDF, MCU, File
+# ===============================================================
+
+# ---------------------------------------------------------------
+# 🔙 Tombol kembali ke dashboard
+# ---------------------------------------------------------------
 def add_back_to_dashboard_button():
-    """Menambahkan tombol 'Kembali ke Dashboard' di halaman fitur dengan ikon ??."""
-    if st.button("?? Kembali ke Dashboard", key="back_to_dash"):
+    if st.button("🏠 Kembali ke Dashboard", key="back_dash"):
         navigate_to("Dashboard")
     st.markdown("---")
 
-# ----------------- Halaman Header (Selalu ditampilkan) -----------------
-header_col1, header_col2 = st.columns([1, 4])
-with header_col1:
-    # Menggunakan ikon emoji karena LOGO_PATH tidak tersedia
-    st.markdown("<h1 style='font-size: 3rem;'>???</h1>", unsafe_allow_html=True)
+# ===============================================================
+# 📸 FITUR: KOMPRES & KELOLA FOTO
+# ===============================================================
+if menu == "Kompres Foto":
+    add_back_to_dashboard_button()
+    st.subheader("🖼️ Kompres & Kelola Foto / Gambar")
 
-with header_col2:
-    st.title("Master - App – Tools MCU")
-    st.markdown("Aplikasi serbaguna untuk pengolahan dokumen, PDF, gambar, dan data MCU — UI elegan + fungsi lengkap.")
-
-st.markdown("---")
-
-
-# -----------------------------------------------------------------------------
-# ----------------- FUNGSI UTAMA -----------------
-# -----------------------------------------------------------------------------
-
-# -------------- Dashboard (Menu Utama) --------------
-if menu == "Dashboard":
-    
-    st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-    st.markdown("## ? Pilih Fitur Utama")
-    
-    # ------------------ FITUR UTAMA ------------------
-    cols1 = st.columns(3)
+    img_tool = st.selectbox("Pilih Fitur:", [
+        "📉 Kompres Foto (Batch)",
+        "🧾 Batch Rename Gambar (Sequential)",
+        "📑 Batch Rename Gambar Sesuai Excel"
+    ])
 
     # Kompres Foto
-    with cols1[0]:
-        with st.container():
-            # Ikon: ??? (Picture) atau ?? (Camera)
-            st.markdown('<div class="feature-card"><b>??? Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
-            if st.button("Buka Kompres Foto", key="dash_foto"):
-                navigate_to("Kompres Foto")
-
-    # PDF Tools
-    with cols1[1]:
-        with st.container():
-            # Ikon: ?? (Page/Document) atau ?? (Clip)
-            st.markdown('<div class="feature-card"><b>?? PDF Tools</b><br>Gabung, pisah, encrypt, Reorder & Batch Rename Sesuai Excel/Sequential, **Terjemahan**.</div>', unsafe_allow_html=True)
-            if st.button("Buka PDF Tools", key="dash_pdf"):
-                navigate_to("PDF Tools")
-
-    # MCU Tools
-    with cols1[2]:
-        with st.container():
-            # Ikon: ?? (Stethoscope) atau ?? (Chart)
-            st.markdown('<div class="feature-card"><b>?? MCU Tools</b><br>Proses Excel + PDF untuk hasil MCU / Analisis Data. **Termasuk Organise by Excel**</div>', unsafe_allow_html=True)
-            if st.button("Buka MCU Tools", key="dash_mcu"):
-                navigate_to("MCU Tools")
-            
-    # ------------------ FITUR LAINNYA ------------------
-    st.markdown("## ?? Fitur Lainnya")
-    cols2 = st.columns(3)
-    
-  
-    # File Tools
-    with cols2[0]:
-        with st.container():
-            # Ikon: ?? (Folder)
-            st.markdown('<div class="feature-card"><b>?? File Tools</b><br>Zip/unzip, konversi dasar, Batch Rename Gambar & PDF.</div>', unsafe_allow_html=True)
-            if st.button("Buka File Tools", key="dash_file"):
-                navigate_to("File Tools")
-
-    # Tentang
-    with cols2[1]:
-        with st.container():
-            # Ikon: ?? (Lightbulb) atau ?? (Info)
-            st.markdown('<div class="feature-card"><b>?? Tentang Aplikasi</b><br>Informasi dan kebutuhan library.</div>', unsafe_allow_html=True)
-            if st.button("Lihat Tentang", key="dash_about"):
-                navigate_to("Tentang")
-
-    # Kolom kosong (dibuat 3 kolom agar layout tetap rapi)
-    with cols2[2]:
-        st.markdown('<div class="feature-card" style="visibility:hidden; height: 100%;">.</div>', unsafe_allow_html=True)
-        
-    st.markdown('</div>', unsafe_allow_html=True) # Tutup dashboard-container
-
-    st.markdown("---")
-    st.info("Semua proses berlangsung lokal di perangkat server tempat Streamlit dijalankan.")
-
-# -------------- Kompres Foto / Image Tools --------------
-if menu == "Kompres Foto":
-    add_back_to_dashboard_button() 
-    st.subheader("??? Kompres & Kelola Foto/Gambar")
-    
-    # Sub-menu untuk gambar
-    img_tool = st.selectbox("Pilih Fitur Gambar", [
-        "?? Kompres Foto (Batch)", 
-        "?? Batch Rename/Format Gambar (Sequential)",
-        "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)"
-        ])
-
-    if img_tool == "?? Kompres Foto (Batch)":
-        st.markdown("---")
-        st.markdown("### ?? Kompres Foto (Batch)")
-        uploaded = st.file_uploader("Unggah gambar (jpg/png) — bisa banyak", type=["jpg","jpeg","png"], accept_multiple_files=True)
+    if img_tool == "📉 Kompres Foto (Batch)":
+        uploaded = st.file_uploader("Unggah gambar (jpg/png) – bisa banyak:", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
         quality = st.slider("Kualitas JPEG", 10, 95, 75)
-        max_side = st.number_input("Max side (px)", min_value=100, max_value=4000, value=1200)
+        max_side = st.number_input("Ukuran maksimum (px)", 100, 4000, 1200)
         if uploaded and st.button("Kompres Semua"):
             out_map = {}
             total = len(uploaded)
@@ -323,1297 +245,384 @@ if menu == "Kompres Foto":
             with st.spinner("Mengompres..."):
                 for i, f in enumerate(uploaded):
                     try:
-                        raw = f.read()
-                        im = Image.open(io.BytesIO(raw))
+                        im = Image.open(io.BytesIO(f.read()))
                         im.thumbnail((max_side, max_side))
                         buf = io.BytesIO()
                         im.convert("RGB").save(buf, format="JPEG", quality=quality, optimize=True)
                         out_map[f"compressed_{f.name}"] = buf.getvalue()
                     except Exception as e:
                         st.warning(f"Gagal: {f.name} — {e}")
-                    prog.progress(int((i+1)/total*100))
+                    prog.progress(int((i + 1) / total * 100))
             if out_map:
-                zipb = make_zip_from_map(out_map)
-                st.success(f"? {len(out_map)} file berhasil dikompres")
-                st.download_button("Unduh Hasil (ZIP)", zipb, file_name="foto_kompres.zip", mime="application/zip")
-            else:
-                st.warning("Tidak ada file berhasil dikompres.")
+                st.success(f"✅ {len(out_map)} file berhasil dikompres")
+                st.download_button("Unduh Hasil (ZIP)", make_zip_from_map(out_map),
+                                   file_name="foto_kompres.zip", mime="application/zip")
 
-    # --- FITUR Batch Rename Gambar (Sequential) ---
-    elif img_tool == "?? Batch Rename/Format Gambar (Sequential)": 
-        st.markdown("---")
-        st.markdown("### ?? Ganti Nama & Ubah Format Gambar Massal (Sequential)")
-        uploaded_files = st.file_uploader(
-            "Unggah file Gambar (JPG, PNG, dll.):", 
-            type=["jpg", "jpeg", "png", "webp"], 
-            accept_multiple_files=True,
-            key="batch_rename_uploader"
-        )
-        if uploaded_files:
-            col1, col2 = st.columns(2)
-            new_prefix = col1.text_input("Prefix Nama File Baru:", value="KAY_File", help="Contoh: KAY_File_001.jpg", key="prefix_img_seq")
-            new_format = col2.selectbox("Format Output Baru:", ["Sama seperti Asli", "JPG", "PNG", "WEBP"], index=0, key="format_img_seq")
-
-            if st.button("Proses Batch File", key="process_batch_rename_seq"):
-                if not new_prefix: 
-                    st.error("Prefix nama file tidak boleh kosong.")
-                    st.stop()
-                else:
-                    output_zip = io.BytesIO()
-                    try:
-                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
-                            for i, file in enumerate(uploaded_files, 1):
-                                _, original_ext = os.path.splitext(file.name)
-                                img = Image.open(file)
-                                img_io = io.BytesIO()
-                                if new_format == "Sama seperti Asli":
-                                    output_format_pil = img.format if img.format else 'JPEG'
-                                    output_ext = original_ext
-                                else:
-                                    output_ext = "." + new_format.lower()
-                                    output_format_pil = new_format.upper()
-                                new_filename = f"{new_prefix}_{i:03d}{output_ext}"
-                                if output_format_pil in ('JPEG', 'JPG'):
-                                    img.convert("RGB").save(img_io, format='JPEG', quality=95) 
-                                elif output_format_pil == 'PNG':
-                                    img.save(img_io, format='PNG')
-                                elif output_format_pil == 'WEBP':
-                                    img.save(img_io, format='WEBP')
-                                else:
-                                    img.save(img_io, format=output_format_pil) 
-                                img_io.seek(0)
-                                zf.writestr(new_filename, img_io.read())
-                        st.success(f"? Berhasil memproses {len(uploaded_files)} file.") 
-                        st.download_button("Unduh File ZIP Hasil Batch", data=output_zip.getvalue(), file_name="hasil_batch_gambar.zip", mime="application/zip")
-                    except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
-
-    # --- FITUR BARU 1: Batch Rename Gambar Sesuai Excel ---
-    elif img_tool == "?? Batch Rename Gambar Sesuai Excel (Fitur Baru)": 
-        st.markdown("---")
-        st.markdown("### ?? Ganti Nama Gambar (PNG/JPEG) Berdasarkan Excel")
-        st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (termasuk ekstensi, misal: `foto_123.jpg`) dan **`nama_baru`** (termasuk ekstensi, misal: `ID_001.png`).")
-        
-        excel_up = st.file_uploader("Unggah Excel/CSV untuk daftar nama:", type=["xlsx", "csv"], key="rename_img_excel_up")
-        files = st.file_uploader("Unggah Gambar (JPG/PNG/JPEG, multiple):", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="rename_img_files_up")
-      
-        if excel_up and files and st.button("Proses Ganti Nama Gambar (ZIP)", key="process_img_rename_excel"):
-            try:
-                with st.spinner("Memproses penggantian nama..."):
-                    # 1. Baca Excel
-                    if excel_up.name.lower().endswith(".csv"):
-                        df = pd.read_csv(io.BytesIO(excel_up.read()))
-                    else:
-                        df = pd.read_excel(io.BytesIO(excel_up.read()))
-                    
-                    # 2. Validasi Kolom
-                    required_cols = ['nama_lama', 'nama_baru']
-                    if not all(col in df.columns for col in required_cols):
-                        st.error(f"Excel/CSV wajib memiliki kolom: {', '.join(required_cols)}")
-                        st.stop() # Mengganti 'return'
-                    
-                    # 3. Map File dan Proses Rename
-                    file_map = {f.name: f.read() for f in files}
-                    out_map = {}
-                    not_found = []
-                    df['nama_lama_str'] = df['nama_lama'].astype(str).str.strip() # Gunakan str.strip() untuk membersihkan spasi
-
-                    for _, row in df.iterrows():
-                        old_name = str(row['nama_lama']).strip()
-                        new_name = str(row['nama_baru']).strip()
-                        
-                        # Cek di file yang diupload (case-sensitive)
-                        if old_name in file_map:
-                            # Pastikan nama baru memiliki ekstensi
-                            if not os.path.splitext(new_name)[1]:
-                                # Coba ambil ekstensi dari nama lama jika nama baru tidak ada
-                                _, old_ext = os.path.splitext(old_name)
-                                new_name = new_name + old_ext
-                                
-                            out_map[new_name] = file_map[old_name]
-                        else:
-                            not_found.append(old_name)
-
-                    # 4. Buat ZIP
-                    if out_map:
-                        zipb = make_zip_from_map(out_map)
-                        st.success(f"? {len(out_map)} file berhasil diganti namanya dan dikemas.") 
-                        st.download_button("Unduh Hasil (ZIP)", zipb, file_name="gambar_renamed_by_excel.zip", mime="application/zip")
-                    else:
-                        st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
-                    
-                    if not_found:
-                        st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
-            except Exception as e:
-                st.error(f"Terjadi kesalahan pemrosesan: {e}")
-                traceback.print_exc()
-
-# -------------- PDF Tools (Diperbarui Menu dan Fitur) --------------
-if menu == "PDF Tools":
-    add_back_to_dashboard_button() 
-    st.subheader("?? PDF Tools")
-
-    # Menu yang lebih terstruktur dan ditambahkan fitur baru dengan ikon yang jelas
-    pdf_options = [
-        "--- Pilih Tools ---",
-        "? Gabung PDF", 
-        "?? Pisah PDF", 
-        "?? Reorder/Hapus Halaman PDF", 
-        "?? Batch Rename PDF (Sequential)", 
-        "?? Batch Rename PDF Sesuai Excel (Fitur Baru)", 
-        "??? Image -> PDF", 
-        "?? PDF -> Image", 
-        "?? Ekstraksi Teks/Tabel", 
-        "??? Terjemahan PDF ke Bahasa Lain (Fitur Baru)", # <-- FITUR BARU TRANSLATE
-        "?? Konversi PDF", 
-        "?? Proteksi PDF", 
-        "??? Utility PDF", 
-    ]
-    
-    tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
-
-    # Mapping
-    if tool_select == "--- Pilih Tools ---": tool = None
-    elif tool_select == "?? Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) 
-    elif tool_select == "?? Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) 
-    elif tool_select == "?? Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) 
-    elif tool_select == "??? Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
-    elif tool_select == "? Gabung PDF": tool = "Gabung PDF" 
-    elif tool_select == "?? Pisah PDF": tool = "Pisah PDF" 
-    elif tool_select == "?? Reorder/Hapus Halaman PDF": tool = "Reorder PDF" 
-    elif tool_select == "?? Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" 
-    elif tool_select == "?? Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
-    elif tool_select == "?? PDF -> Image": tool = "PDF -> Image" 
-    elif tool_select == "??? Image -> PDF": tool = "Image -> PDF" 
-    elif tool_select == "??? Terjemahan PDF ke Bahasa Lain (Fitur Baru)": tool = "Translate PDF" # <-- MAPPING TRANSLATE
-    else: tool = None
-    
-
-# --- FITUR BARU: Terjemahan PDF (Optimasi Struktur/Rapi) ---
-    if tool == "Translate PDF":
-        st.markdown("---")
-        st.markdown("### ??? Terjemahan Teks PDF (Optimasi Agar Lebih Rapi)")
-        st.info("Fitur ini mencoba membuat hasil Word lebih rapi dengan menggabungkan baris-baris pendek yang berdekatan (*pre-processing*). **Replikasi tata letak kolom/tabel PDF tetap terbatas.**")
-        
-        if Translator is None or Document is None:
-            if Translator is None: st.error("Library `deep-translator` tidak ditemukan.")
-            if Document is None: st.error("Library `python-docx` tidak ditemukan.")
-            st.stop()
-        
-        f = st.file_uploader("Unggah PDF untuk Diterjemahkan:", type="pdf", key="translate_pdf_uploader")
-        
-        col1, col2 = st.columns(2)
-        src_lang = col1.text_input("Bahasa Sumber (ISO Code, ex: id)", value="auto", help="Ketik 'auto' jika tidak yakin.")
-        target_lang = col2.text_input("Bahasa Tujuan (ISO Code, ex: en, ja, fr)", value="en")
-
-        if f and st.button("Proses Terjemahan dan Buat Word (.docx)", key="translate_pdf_button"):
-            try:
-                
-                # --- HELPER: Menggabungkan baris pendek untuk kerapihan ---
-                def preprocess_text_for_layout(text_blocks: list) -> list:
-                    """Menggabungkan baris-baris pendek yang berdekatan, mengasumsikan itu adalah item daftar atau sel tabel."""
-                    processed_blocks = []
-                    current_block = ""
-                    MAX_LINE_LENGTH = 100 # Batas panjang baris agar tidak digabungkan
-                    
-                    for block in text_blocks:
-                        if block.strip() == "":
-                            # Baris kosong yang sebenarnya menandakan akhir paragraf
-                            if current_block:
-                                processed_blocks.append(current_block)
-                            processed_blocks.append("") # Jaga pemisah yang jelas
-                            current_block = ""
-                            continue
-                        
-                        # Baris yang sangat pendek (mungkin label/nilai)
-                        if len(block.strip()) < MAX_LINE_LENGTH and not block.strip().endswith('.'):
-                            # Jika baris pendek, coba gabungkan ke block saat ini dengan spasi
-                            if current_block:
-                                current_block += " | " + block.strip() # Gunakan pemisah "|" 
-                            else:
-                                current_block = block.strip()
-                        else:
-                            # Jika baris panjang (paragraf utuh)
-                            if current_block:
-                                processed_blocks.append(current_block)
-                            current_block = block.strip()
-                            processed_blocks.append(current_block)
-                            current_block = ""
-                            
-                    if current_block:
-                        processed_blocks.append(current_block)
-                    
-                    # Hapus spasi ganda yang berlebihan setelah processing
-                    return [b.replace("  ", " ").strip() for b in processed_blocks if b.strip() or b == ""]
-                # --------------------------------------------------------
-
-                # 1. Ekstraksi Teks (Menggunakan Paragraf sebagai Unit)
-                with st.spinner("1. Mengekstrak dan merapikan teks dari PDF..."):
-                    raw = f.read()
-                    all_text_lines = []
-                    
-                    if pdfplumber:
-                        with pdfplumber.open(io.BytesIO(raw)) as doc:
-                            for p in doc.pages:
-                                page_text = p.extract_text() or ""
-                                # Pisahkan per baris baru tunggal (lebih detail)
-                                all_text_lines.extend(page_text.split('\n'))
-                                all_text_lines.append("---HALAMAN BARU---") # Marker untuk halaman baru
-
-                    else: # Fallback ke PyPDF2
-                        reader = PdfReader(io.BytesIO(raw))
-                        for p in reader.pages:
-                            page_text = p.extract_text() or ""
-                            all_text_lines.extend(page_text.split('\n'))
-                            all_text_lines.append("---HALAMAN BARU---")
-
-                    # Lakukan Pre-processing untuk menggabungkan baris-baris yang berdekatan
-                    preprocessed_paragraphs = preprocess_text_for_layout(all_text_lines)
-                    
-                    full_text_clean = "\n\n".join(p for p in preprocessed_paragraphs if p != "---HALAMAN BARU---" and p != "")
-
-                if not full_text_clean.strip():
-                    st.warning("Teks kosong atau tidak dapat diekstrak dari PDF.")
-                    st.stop()
-
-                # 2. Chunking Berbasis Paragraf dan Terjemahan
-                with st.spinner(f"2. Menerjemahkan teks ke {target_lang} (mempertahankan paragraf)..."):
-                    translator = Translator(source=src_lang, target=target_lang)
-                    CHUNK_SIZE = 4500 # Batas karakter aman
-                    
-                    # Gabungkan paragraf yang sudah diproses menjadi chunks aman untuk terjemahan
-                    current_chunk = ""
-                    text_chunks_for_translation = []
-                    
-                    for p in preprocessed_paragraphs:
-                        # Jika penanda halaman ditemukan
-                        if p == "---HALAMAN BARU---":
-                            if current_chunk:
-                                text_chunks_for_translation.append(current_chunk)
-                            text_chunks_for_translation.append("---HALAMAN BARU---")
-                            current_chunk = ""
-                            continue
-                        
-                        # Jika paragraf yang diproses kosong atau merupakan spasi antar blok
-                        if not p.strip(): 
-                             if current_chunk:
-                                text_chunks_for_translation.append(current_chunk)
-                             text_chunks_for_translation.append("") # Tambahkan marker baris kosong
-                             current_chunk = ""
-                             continue
-
-                        # Logic chunking: tambahkan paragraf ke chunk saat ini
-                        if len(current_chunk) + len(p) + 4 > CHUNK_SIZE: # +4 untuk pemisah \n\n
-                            if current_chunk:
-                                text_chunks_for_translation.append(current_chunk)
-                            current_chunk = p + "\n\n"
-                        else:
-                            current_chunk += p + "\n\n"
-                    
-                    if current_chunk:
-                        text_chunks_for_translation.append(current_chunk.strip())
-                        
-                    translated_parts = []
-                    prog = st.progress(0)
-                    
-                    for i, chunk in enumerate(text_chunks_for_translation):
-                        if chunk in ("---HALAMAN BARU---", ""):
-                            translated_parts.append(chunk) 
-                        else:
-                            if i > 0: time.sleep(0.1) 
-                            # Terjemahkan, dan ganti pemisah "|" kembali ke format yang rapi
-                            translated = translator.translate(chunk)
-                            translated_parts.append(translated.replace(" | ", " | ").strip()) 
-                        
-                        prog.progress(int((i + 1) / len(text_chunks_for_translation) * 100))
-
-                    translated_text_combined = "\n\n".join(translated_parts)
-                    prog.empty()
-
-                # 3. Rekonstruksi ke Word (Memanfaatkan Struktur Lebih Baik)
-                with st.spinner("3. Membuat file Word (.docx) baru..."):
-                    doc = Document()
-                    
-                    # Memecah berdasarkan penanda halaman dan paragraf yang jelas
-                    for item in translated_text_combined.split('\n\n'):
-                        item_stripped = item.strip()
-
-                        if item_stripped == "---HALAMAN BARU---":
-                            # Tambahkan Page Break
-                            doc.add_page_break()
-                        elif item_stripped:
-                            # Gunakan paragraf baru
-                            doc.add_paragraph(item_stripped)
-                    
-                    out = io.BytesIO()
-                    doc.save(out)
-                    out.seek(0)
-                    
-                st.success("? Terjemahan berhasil! Unduh file Word hasil terjemahan.")
-                st.download_button(
-                    f"?? Unduh Hasil Terjemahan ({target_lang}).docx", 
-                    data=out.getvalue(), 
-                    file_name=f"translated_to_{target_lang}_rapi.docx", 
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-                
-                st.markdown("---")
-                st.markdown("#### Preview Teks Asli (Sudah Dirapikan) dan Terjemahan")
-                col_preview1, col_preview2 = st.columns(2)
-                with col_preview1:
-                    st.text_area("Teks Asli (Dirapikan)", "\n\n".join(preprocessed_paragraphs)[:5000], height=300)
-                with col_preview2:
-                    st.text_area("Teks Terjemahan", translated_text_combined[:5000], height=300)
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat terjemahan. Cek kode bahasa (ISO 639-1) dan pastikan teks dapat diekstrak. Error: {e}")
-                traceback.print_exc()
-
-    # --- FITUR Batch Rename PDF Sesuai Excel ---
-    if tool == "Batch Rename PDF Excel":
-        st.markdown("---")
-        st.markdown("### ?? Ganti Nama File PDF Berdasarkan Excel") 
-        st.markdown("Unggah banyak file PDF dan ganti namanya sesuai daftar di Excel/CSV.")
-        st.info("Template Excel/CSV wajib memiliki kolom **`nama_lama`** (misal: `ID_123.pdf`) dan **`nama_baru`** (misal: `Hasil_123.pdf`).")
-
-        excel_up = st.file_uploader("Unggah Excel/CSV untuk daftar nama:", type=["xlsx", "csv"], key="rename_pdf_excel_up")
-        files = st.file_uploader("Unggah File PDF (multiple):", type=["pdf"], accept_multiple_files=True, key="rename_pdf_files_up")
-        
-        if excel_up and files and st.button("Proses Ganti Nama PDF (ZIP)", key="process_pdf_rename_excel"):
-            try:
-                with st.spinner("Memproses penggantian nama..."):
-                    # 1. Baca Excel
-                    if excel_up.name.lower().endswith(".csv"):
-                        df = pd.read_csv(io.BytesIO(excel_up.read()))
-                    else:
-                        df = pd.read_excel(io.BytesIO(excel_up.read()))
-                    
-                    # 2. Validasi Kolom
-                    required_cols = ['nama_lama', 'nama_baru']
-                    if not all(col in df.columns for col in required_cols):
-                        st.error(f"Excel/CSV wajib memiliki kolom: {', '.join(required_cols)}")
-                        st.stop() # Mengganti 'return'
-                    
-                    # 3. Map File dan Proses Rename
-                    file_map = {f.name: f.read() for f in files}
-                    out_map = {}
-                    not_found = []
-                    
-                    for _, row in df.iterrows():
-                        old_name = str(row['nama_lama']).strip()
-                        new_name = str(row['nama_baru']).strip()
-                        
-                        if old_name in file_map:
-                            # Tambahkan ekstensi .pdf jika belum ada di nama baru
-                            if not new_name.lower().endswith('.pdf'):
-                                new_name += '.pdf'
-                            out_map[new_name] = file_map[old_name]
-                        else:
-                            not_found.append(old_name)
-
-                    # 4. Buat ZIP
-                    if out_map:
-                        zipb = make_zip_from_map(out_map)
-                        st.success(f"? {len(out_map)} file berhasil diganti namanya dan dikemas.") 
-                        st.download_button("Unduh Hasil (ZIP)", zipb, file_name="pdf_renamed_by_excel.zip", mime="application/zip")
-                    else:
-                        st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
-                    
-                    if not_found:
-                        st.info(f"{len(not_found)} file 'nama_lama' di Excel tidak ditemukan di file yang diunggah. Contoh: {not_found[:5]}")
-            except Exception as e:
-                st.error(f"Terjadi kesalahan pemrosesan: {e}")
-                traceback.print_exc()
-
-    # --- FITUR Batch Rename PDF (Sequential) ---
-    if tool == "Batch Rename PDF Seq":
-        st.markdown("---")
-        st.markdown("### ?? Ganti Nama File PDF Massal (Sequential)") 
-        uploaded_files = st.file_uploader("Unggah file PDF (multiple):", type=["pdf"], accept_multiple_files=True, key="batch_rename_pdf_uploader_seq")
-    
-        if uploaded_files:
-            col1, col2 = st.columns(2)
-            new_prefix = col1.text_input("Prefix Nama File Baru:", value="Hasil_PDF", help="Contoh: Hasil_PDF_001.pdf", key="prefix_pdf_seq")
-            start_num = col2.number_input("Mulai dari Angka (Counter):", min_value=1, value=1, step=1, key="start_num_pdf_seq")
-
-            if st.button("Proses Ganti Nama (ZIP)", key="process_batch_rename_pdf_seq"):
-                if not new_prefix: 
-                    st.error("Prefix nama file tidak boleh kosong.")
-                    st.stop() # Mengganti 'return'
-                else:
-                    output_zip = io.BytesIO()
-                    try:
-                        with zipfile.ZipFile(output_zip, 'w', zipfile.ZIP_DEFLATED) as zf:
-                            for i, file in enumerate(uploaded_files, start_num):
-                                new_filename = f"{new_prefix}_{i:03d}.pdf"
-                                zf.writestr(new_filename, file.read())
-                        st.success(f"? Berhasil mengganti nama {len(uploaded_files)} file.") 
-                        st.download_button("Unduh File ZIP Hasil Rename", data=output_zip.getvalue(), file_name="pdf_renamed.zip", mime="application/zip")
-                    except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
-
-    # --- LOGIKA FITUR PDF LAINNYA (dengan ikon diperbarui) ---
-    if tool == "Reorder PDF":
-        st.markdown("---")
-        st.markdown("### ?? Reorder atau Hapus Halaman PDF") 
-        st.markdown("Unggah file PDF Anda dan tentukan urutan halaman baru (contoh: `2, 1, 3` untuk membalik, atau `1, 3` untuk menghapus halaman 2).")
-
-        f = st.file_uploader("Unggah 1 file PDF:", type="pdf", key="reorder_pdf_uploader")
-        
-        if f:
-            try:
-                raw = f.read()
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                reader = PdfReader(io.BytesIO(raw))
-                num_pages = len(reader.pages)
-                st.info(f"PDF berhasil dimuat. Jumlah total halaman: **{num_pages}**.")
-                
-                default_order = ", ".join(map(str, range(1, num_pages + 1)))
-
-                new_order_str = st.text_input(
-                    f"Masukkan urutan halaman baru (1-{num_pages}) dipisahkan koma:",
-                    value=default_order,
-                    help="Contoh: '3, 1, 2' untuk mengubah urutan. '1, 3, 5' untuk menghapus halaman genap."
-                )
-
-                if st.button("Proses Reorder/Hapus Halaman", key="process_reorder"):
-                    new_order_indices = []
-                    
-                    try:
-                        input_list = [int(x.strip()) for x in new_order_str.split(',') if x.strip().isdigit()]
-                        
-                        if any(n < 1 or n > num_pages for n in input_list):
-                            st.error(f"Nomor halaman harus antara 1 sampai {num_pages}.")
-                            # Ganti raise ValueError dengan st.stop()
-                            st.stop() 
-
-                        new_order_indices = [n - 1 for n in input_list]
-                      
-                        writer = PdfWriter()
-                        for index in new_order_indices:
-                            writer.add_page(reader.pages[index])
-                        
-                        pdf_buffer = io.BytesIO()
-                        writer.write(pdf_buffer)
-                        pdf_buffer.seek(0)
-
-                        st.download_button(
-                            "?? Unduh Hasil PDF (Reordered)", 
-                            data=pdf_buffer,
-                            file_name="pdf_reordered.pdf",
-                            mime="application/pdf"
-                        )
-                        st.success(f"Pemrosesan selesai. Total halaman baru: {len(new_order_indices)}.")
-
-                    except Exception as e:
-                        st.error(f"Format urutan halaman tidak valid atau terjadi kesalahan pemrosesan: {e}")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat memproses PDF: {e}")
-                st.info("Pastikan file yang diunggah adalah PDF yang valid.")
-
-    if tool == "Gabung PDF":
-        st.markdown("---")
-        st.markdown("### ? Gabung PDF")
-        files = st.file_uploader("Upload PDFs (multiple):", type="pdf", accept_multiple_files=True)
-        if files and st.button("Gabung"):
-            try:
-                if PdfWriter is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Menggabungkan..."):
-                    writer = PdfWriter()
-                    for f in files:
-                        reader = PdfReader(io.BytesIO(f.read()))
-                        for p in reader.pages:
-                            writer.add_page(p)
-                    out = io.BytesIO(); writer.write(out); out.seek(0)
-                st.download_button("Download merged.pdf", out.getvalue(), file_name="merged.pdf", mime="application/pdf")
-                st.success("Selesai")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Pisah PDF":
-        st.markdown("---")
-        st.markdown("### ?? Pisah PDF")
-        f = st.file_uploader("Upload single PDF:", type="pdf")
-        if f and st.button("Split to pages (ZIP)"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Memisahkan..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    out_map = {}
-                    for i, p in enumerate(reader.pages):
-                        w = PdfWriter(); w.add_page(p)
-                        buf = io.BytesIO(); w.write(buf); buf.seek(0)
-                        out_map[f"page_{i+1}.pdf"] = buf.getvalue()
-                    zipb = make_zip_from_map(out_map)
-                st.download_button("Download pages.zip", zipb, file_name="pages.zip", mime="application/zip")
-            except Exception:
-                st.error(traceback.format_exc())
-                
-    if tool == "Hapus Halaman":
-        st.markdown("---")
-        st.markdown("### ??? Hapus Halaman dari PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        page_no = st.number_input("Halaman yang dihapus (1-based)", min_value=1, value=1)
-        if f and st.button("Hapus Halaman"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Menghapus..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    writer = PdfWriter()
-                    for i, p in enumerate(reader.pages):
-                        if i+1 != page_no:
-                            writer.add_page(p)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download result", buf.getvalue(), file_name="removed_page.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Rotate PDF":
-        st.markdown("---")
-        st.markdown("### ?? Putar Halaman PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        angle = st.selectbox("Rotate degrees", [90, 180, 270])
-        if f and st.button("Rotate"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Memutar..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    writer = PdfWriter()
-                    for p in reader.pages:
-                        rotate_page_safe(p, angle)
-                        writer.add_page(p)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download rotated.pdf", buf.getvalue(), file_name="rotated.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Kompres PDF":
-        st.markdown("---")
-        st.markdown("### ?? Kompres Ukuran PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        if f and st.button("Compress (rewrite)"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Mengompres (rewrite)..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    writer = PdfWriter()
-                    for p in reader.pages:
-                        writer.add_page(p)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download compressed.pdf", buf.getvalue(), file_name="compressed.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Watermark PDF":
-        st.markdown("---")
-        st.markdown("### ?? Tambah Watermark ke PDF")
-        base = st.file_uploader("Base PDF", type="pdf")
-        watermark = st.file_uploader("Watermark PDF (single page)", type="pdf")
-        if base and watermark and st.button("Apply watermark"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Menerapkan watermark..."):
-                    rb = PdfReader(io.BytesIO(base.read()))
-                    rm = PdfReader(io.BytesIO(watermark.read()))
-                    wm = rm.pages[0]
-                    writer = PdfWriter()
-                    for p in rb.pages:
-                        try:
-                            p.merge_page(wm)
-                        except Exception:
-                            try:
-                                p.mergeTranslatedPage(wm, 0, 0)
-                            except Exception:
-                                pass
-                        writer.add_page(p)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download watermarked.pdf", buf.getvalue(), file_name="watermarked.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "PDF -> Image":
-        st.markdown("---")
-        st.markdown("### ?? PDF ke Gambar (PNG/JPEG)")
-        st.info("Requires pdf2image + poppler (server).")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        dpi = st.slider("DPI", 100, 300, 150)
-        fmt = st.radio("Format", ["PNG", "JPEG"])
-        if f and st.button("Convert to images"):
-            try:
-                if not PDF2IMAGE_AVAILABLE:
-                    st.error("pdf2image not installed or poppler missing.")
-                    st.stop()
-                else:
-                    with st.spinner("Converting..."):
-                        pdf_bytes = f.read()
-                        images = None
-                        if convert_from_bytes is not None:
-                            images = convert_from_bytes(pdf_bytes, dpi=dpi)
-                        else:
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                                tmp.write(pdf_bytes)
-                            tmp_path = tmp.name
-                            images = convert_from_path(tmp_path, dpi=dpi)
-                            try:
-                                os.unlink(tmp_path)
-                            except Exception:
-                                pass
-                        out_map = {}
-                        for i, img in enumerate(images):
-                            b = io.BytesIO(); img.save(b, format=fmt); out_map[f"page_{i+1}.{fmt.lower()}"] = b.getvalue()
-                        zipb = make_zip_from_map(out_map)
-                        st.download_button("Download images.zip", zipb, file_name="pdf_images.zip", mime="application/zip")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Image -> PDF":
-        st.markdown("---")
-        st.markdown("### ??? Gambar ke PDF")
-        imgs = st.file_uploader("Upload images", type=["jpg","png","jpeg"], accept_multiple_files=True)
-        if imgs and st.button("Images -> PDF"):
-            try:
-                with st.spinner("Membuat PDF dari gambar..."):
-                    pil = [Image.open(io.BytesIO(i.read())).convert("RGB") for i in imgs]
+    # Batch Rename Sequential
+    elif img_tool == "🧾 Batch Rename Gambar (Sequential)":
+        uploaded_files = st.file_uploader("Unggah file gambar:", type=["jpg", "jpeg", "png", "webp"], accept_multiple_files=True)
+        prefix = st.text_input("Prefix nama file:", "KAY_File")
+        fmt = st.selectbox("Format output:", ["Sama seperti asli", "JPG", "PNG", "WEBP"], index=0)
+        if uploaded_files and st.button("Proses Batch Rename"):
+            output = io.BytesIO()
+            with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
+                for i, f in enumerate(uploaded_files, 1):
+                    im = Image.open(f)
+                    ext = os.path.splitext(f.name)[1]
+                    if fmt != "Sama seperti asli":
+                        ext = "." + fmt.lower()
+                    name = f"{prefix}_{i:03d}{ext}"
                     buf = io.BytesIO()
-                    if len(pil) == 1:
-                        pil[0].save(buf, format="PDF")
-                    else:
-                        pil[0].save(buf, save_all=True, append_images=pil[1:], format="PDF")
+                    im.convert("RGB").save(buf, format=fmt if fmt != "Sama seperti asli" else im.format)
                     buf.seek(0)
-                st.download_button("Download images_as_pdf.pdf", buf.getvalue(), file_name="images_as_pdf.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
+                    zf.writestr(name, buf.read())
+            st.download_button("Unduh ZIP", output.getvalue(), file_name="gambar_batch_rename.zip", mime="application/zip")
+            st.success("✅ Berhasil mengganti nama file")
 
-    if tool == "Extract Text":
-        st.markdown("---")
-        st.markdown("### ?? Ekstraksi Teks dari PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        if f and st.button("Extract text"):
-            try:
-                if PdfReader is None and pdfplumber is None:
-                    st.error("PyPDF2 atau pdfplumber tidak terinstall.")
-                    st.stop()
-                with st.spinner("Mengekstrak teks..."):
-                    text_blocks = []
-                    raw = f.read()
-                    if pdfplumber:
-                        with pdfplumber.open(io.BytesIO(raw)) as doc:
-                            for i, p in enumerate(doc.pages):
-                                text_blocks.append(f"--- Page {i+1} ---\n" + (p.extract_text() or ""))
+    # Batch Rename Gambar via Excel
+    elif img_tool == "📑 Batch Rename Gambar Sesuai Excel":
+        st.info("Excel harus memiliki kolom `nama_lama` dan `nama_baru`")
+        excel = st.file_uploader("Unggah Excel/CSV:", type=["xlsx", "csv"])
+        files = st.file_uploader("Unggah gambar:", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+        if excel and files and st.button("Proses Rename"):
+            df = pd.read_excel(excel) if excel.name.endswith(".xlsx") else pd.read_csv(excel)
+            required_cols = ['nama_lama', 'nama_baru']
+            if not all(c in df.columns for c in required_cols):
+                st.error(f"Kolom wajib: {', '.join(required_cols)}")
+            else:
+                file_map = {f.name: f.read() for f in files}
+                out_map, not_found = {}, []
+                for _, row in df.iterrows():
+                    old, new = str(row['nama_lama']).strip(), str(row['nama_baru']).strip()
+                    if old in file_map:
+                        if not os.path.splitext(new)[1]:
+                            new += os.path.splitext(old)[1]
+                        out_map[new] = file_map[old]
                     else:
-                        reader = PdfReader(io.BytesIO(raw))
-                        for i, p in enumerate(reader.pages):
-                            text_blocks.append(f"--- Page {i+1} ---\n" + (p.extract_text() or ""))
-                    full = "\n".join(text_blocks)
-                    st.text_area("Extracted text (preview)", full[:10000], height=300)
-                    st.download_button("Download .txt", full, file_name="extracted_text.txt", mime="text/plain")
-            except Exception:
-                st.error(traceback.format_exc())
+                        not_found.append(old)
+                if out_map:
+                    st.success(f"✅ {len(out_map)} file berhasil diganti nama")
+                    st.download_button("Unduh ZIP", make_zip_from_map(out_map),
+                                       file_name="gambar_renamed.zip", mime="application/zip")
+                if not_found:
+                    st.warning(f"Tidak ditemukan: {not_found[:5]} ...")
 
-    if tool == "Extract Tables -> Excel":
-        st.markdown("---")
-        st.markdown("### ?? Ekstraksi Tabel ke Excel")
-        if pdfplumber is None:
-            st.error("pdfplumber is required for table extraction (pip install pdfplumber)")
-        else:
-            f = st.file_uploader("Upload PDF", type="pdf")
-            if f and st.button("Extract tables"):
-                try:
-                    with st.spinner("Mengekstrak tabel..."):
-                        tables = []
-                        with pdfplumber.open(io.BytesIO(f.read())) as doc:
-                            for page in doc.pages:
-                                for tbl in page.extract_tables():
-                                    if tbl and len(tbl) > 1: # Menghilangkan baris header yang mungkin diduplikasi
-                                        df = pd.DataFrame(tbl[1:], columns=tbl[0])
-                                        tables.append(df)
-                        if tables:
-                            df_all = pd.concat(tables, ignore_index=True)
-                            st.dataframe(df_all.head())
-                            excel_bytes = df_to_excel_bytes(df_all)
-                            st.download_button("Download Excel", data=excel_bytes, file_name="extracted_tables.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        else:
-                            st.info("No tables found.")
-                except Exception:
-                    st.error(traceback.format_exc())
+# ===============================================================
+# 📄 FITUR: PDF TOOLS
+# ===============================================================
+if menu == "PDF Tools":
+    add_back_to_dashboard_button()
+    st.subheader("📄 PDF Tools")
 
-    if tool == "PDF -> Word":
-        st.markdown("---")
-        st.markdown("### ?? Konversi PDF ke Word (Text-based)")
-        if Document is None:
-            st.error("python-docx is required for PDF->Word (pip install python-docx)")
-        else:
-            f = st.file_uploader("Upload PDF", type="pdf")
-            if f and st.button("Convert to Word"):
-                try:
-                    if PdfReader is None:
-                        st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                        st.stop()
-                    with st.spinner("Converting..."):
-                        reader = PdfReader(io.BytesIO(f.read()))
-                        doc = Document()
-                        for p in reader.pages:
-                            txt = p.extract_text() or ""
-                            doc.add_paragraph(txt)
-                        out = io.BytesIO(); doc.save(out); out.seek(0)
-                    st.download_button("Download .docx", out.getvalue(), file_name="converted.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-                except Exception:
-                    st.error(traceback.format_exc())
-
-    if tool == "PDF -> Excel (text)":
-        st.markdown("---")
-        st.markdown("### ?? Konversi PDF ke Excel (Text per Halaman)")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        if f and st.button("Convert to Excel (text)"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Converting..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    rows = []
-                    for i, p in enumerate(reader.pages):
-                        rows.append({"page": i+1, "text": p.extract_text() or ""})
-                    df = pd.DataFrame(rows)
-                    excel_bytes = df_to_excel_bytes(df)
-                    st.download_button("Download Excel", excel_bytes, file_name="pdf_text.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Encrypt PDF":
-        st.markdown("---")
-        st.markdown("### ?? Kunci (Encrypt) PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        pw = st.text_input("Password", type="password")
-        if f and pw and st.button("Encrypt"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Mengunci PDF..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    writer = PdfWriter()
-                    for p in reader.pages:
-                        writer.add_page(p)
-                    try_encrypt(writer, pw)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download encrypted.pdf", buf.getvalue(), file_name="encrypted.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Decrypt PDF":
-        st.markdown("---")
-        st.markdown("### ?? Buka Kunci (Decrypt) PDF")
-        f = st.file_uploader("Upload encrypted PDF", type="pdf")
-        pw = st.text_input("Password for decryption", type="password")
-        if f and pw and st.button("Decrypt"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Membuka PDF..."):
-                    reader = PdfReader(io.BytesIO(f.read()))
-                    if getattr(reader, "is_encrypted", False):
-                        reader.decrypt(pw)
-                    writer = PdfWriter()
-                    for p in reader.pages:
-                        writer.add_page(p)
-                    buf = io.BytesIO(); writer.write(buf); buf.seek(0)
-                st.download_button("Download decrypted.pdf", buf.getvalue(), file_name="decrypted.pdf", mime="application/pdf")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Batch Lock (Excel)":
-        st.markdown("---")
-        st.markdown("### ?? Batch Lock PDF Berdasarkan Daftar Excel")
-        excel_file = st.file_uploader("Upload Excel (filename,password) or CSV", type=["xlsx","csv"])
-        pdfs = st.file_uploader("Upload PDFs (multiple)", type="pdf", accept_multiple_files=True)
-        if excel_file and pdfs and st.button("Batch Lock"):
-            try:
-                if PdfReader is None:
-                    st.error("PyPDF2 tidak terinstall (pip install PyPDF2)")
-                    st.stop()
-                with st.spinner("Batch locking PDFs..."):
-                    if excel_file.name.lower().endswith(".csv"):
-                        df = pd.read_csv(io.BytesIO(excel_file.read()))
-                    else:
-                        df = pd.read_excel(io.BytesIO(excel_file.read()))
-                    pdf_map = {p.name: p.read() for p in pdfs}
-                    out_map = {}
-                    not_found = []
-                    total = len(df)
-                    prog = st.progress(0)
-                    for idx, (_, row) in enumerate(df.iterrows()):
-                        cols = [c.lower() for c in df.columns]
-                        try:
-                            # Safely extract column names
-                            # Mencari 'filename' atau 'nama_file'
-                            target_col = next((c for c in df.columns if c.lower() in ('filename', 'nama_file')), None)
-                            # Mencari 'password' atau 'kata_sandi'
-                            pwd_col = next((c for c in df.columns if c.lower() in ('password', 'kata_sandi')), None)
-
-                            if target_col and pwd_col:
-                                target = str(row[target_col]).strip()
-                                pwd = str(row[pwd_col]).strip()
-                            else:
-                                # Jika kolom tidak ditemukan, coba asumsi posisi
-                                target = str(row.iloc[0]).strip() # Asumsi kolom 1 adalah filename
-                                pwd = str(row.iloc[1]).strip() # Asumsi kolom 2 adalah password
-                        except Exception:
-                            target = None; pwd = None
-                        
-                        if target and pwd:
-                            # Cek yang exact match dulu
-                            matches = [k for k in pdf_map.keys() if k == target]
-                            if matches:
-                                key = matches[0]
-                                reader = PdfReader(io.BytesIO(pdf_map[key]))
-                                writer = PdfWriter()
-                                for p in reader.pages:
-                                    writer.add_page(p)
-                                try_encrypt(writer, pwd)
-                                b = io.BytesIO(); writer.write(b); out_map[f"locked_{key}"] = b.getvalue()
-                            else:
-                                not_found.append(target)
-                        prog.progress(int((idx+1)/total*100))
-                    if out_map:
-                        st.download_button("Download locked_pdfs.zip", make_zip_from_map(out_map), file_name="locked_pdfs.zip", mime="application/zip")
-                    if not_found:
-                        st.warning(f"{len(not_found)} files not found sample: {not_found[:10]}")
-            except Exception:
-                st.error(traceback.format_exc())
-
-    if tool == "Preview PDF":
-        st.markdown("---")
-        st.markdown("### ??? Preview PDF")
-        f = st.file_uploader("Upload PDF", type="pdf")
-        mode = st.radio("Preview mode", ["First page (fast)", "All pages (slow)"])
-        if f and st.button("Show Preview"):
-            try:
-                if PdfReader is None and not PDF2IMAGE_AVAILABLE:
-                    st.error("PyPDF2/pdf2image tidak terinstall.")
-                    st.stop()
-                with st.spinner("Preparing preview..."):
-                    pdf_bytes = f.read()
-                    if PDF2IMAGE_AVAILABLE:
-                        if mode.startswith("First"):
-                            if convert_from_bytes is not None:
-                                imgs = convert_from_bytes(pdf_bytes, first_page=1, last_page=1)
-                            else:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                                    tmp.write(pdf_bytes)
-                                tmp_path = tmp.name
-                                imgs = convert_from_path(tmp_path, first_page=1, last_page=1)
-                                try:
-                                    os.unlink(tmp_path)
-                                except Exception:
-                                    pass
-                            buf = io.BytesIO(); imgs[0].save(buf, format="PNG"); buf.seek(0)
-                            st.image(buf.getvalue(), caption="Page 1")
-                        else:
-                            if convert_from_bytes is not None:
-                                images = convert_from_bytes(pdf_bytes)
-                            else:
-                                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                                    tmp.write(pdf_bytes)
-                                tmp_path = tmp.name
-                                images = convert_from_path(tmp_path)
-                                try:
-                                    os.unlink(tmp_path)
-                                except:
-                                    pass
-                            for i, img in enumerate(images):
-                                buf = io.BytesIO(); img.save(buf, format="PNG"); st.image(buf.getvalue(), caption=f"Page {i+1}")
-                    else:
-                        reader = PdfReader(io.BytesIO(pdf_bytes))
-                        if mode.startswith("First"):
-                            text = reader.pages[0].extract_text() or "Teks tidak dapat diekstrak (Mungkin gambar)"
-                            st.text_area("Preview Page 1 (Text only)", text, height=300)
-                        else:
-                            all_text = [p.extract_text() or "Teks tidak dapat diekstrak" for p in reader.pages]
-                            st.text_area("Preview All Pages (Text only)", "\n\n--- Halaman Berikutnya ---\n\n".join(all_text), height=500)
-            except Exception as e:
-                st.error(f"Gagal menampilkan preview. Pastikan Poppler terinstall untuk konversi ke gambar. Error: {e}")
-                traceback.print_exc()
-
-
-# -------------- File Tools --------------
-if menu == "File Tools":
-    add_back_to_dashboard_button() 
-    st.subheader("?? File Tools")
-
-    file_tool = st.selectbox("Pilih Fitur File", [
-        "?? Zip / Unzip File", 
-        "?? Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", 
-        "??? Cek Keberadaan Library"
+    pdf_option = st.selectbox("Pilih Fitur:", [
+        "--- Pilih ---", "📎 Gabung PDF", "✂️ Pisah PDF", "🔄 Reorder / Hapus Halaman",
+        "🔐 Proteksi / Encrypt PDF", "🔓 Decrypt PDF",
+        "🧾 Batch Rename PDF (Sequential)", "📑 Batch Rename PDF Sesuai Excel",
+        "🌍 Terjemahkan PDF ke Bahasa Lain",
+        "🖼️ PDF ➜ Image", "📃 Image ➜ PDF"
     ])
 
-    if file_tool == "?? Zip / Unzip File":
-        st.markdown("---")
-        st.subheader("Kompres ke ZIP atau Ekstrak dari ZIP")
-        mode = st.radio("Pilih Mode", ["Compress to ZIP", "Extract from ZIP"])
+    # Gabung PDF
+    if pdf_option == "📎 Gabung PDF":
+        files = st.file_uploader("Unggah PDF (multiple):", type="pdf", accept_multiple_files=True)
+        if files and st.button("Gabung"):
+            writer = PdfWriter()
+            for f in files:
+                reader = PdfReader(io.BytesIO(f.read()))
+                for p in reader.pages:
+                    writer.add_page(p)
+            buf = io.BytesIO(); writer.write(buf); buf.seek(0)
+            st.download_button("Unduh PDF Gabungan", buf.getvalue(), file_name="merged.pdf", mime="application/pdf")
+            st.success("✅ PDF berhasil digabung")
 
-        if mode == "Compress to ZIP":
-            files = st.file_uploader("Unggah File (Multiple)", accept_multiple_files=True)
-            if files and st.button("Buat ZIP"):
-                try:
-                    out_map = {f.name: f.read() for f in files}
-                    zipb = make_zip_from_map(out_map)
-                    st.download_button("Unduh ZIP", zipb, file_name="compressed_files.zip", mime="application/zip")
-                    st.success("Kompresi selesai.")
-                except Exception as e:
-                    st.error(f"Gagal: {e}")
+    # Pisah PDF
+    if pdf_option == "✂️ Pisah PDF":
+        f = st.file_uploader("Unggah 1 PDF:", type="pdf")
+        if f and st.button("Pisahkan"):
+            reader = PdfReader(io.BytesIO(f.read()))
+            out_map = {}
+            for i, p in enumerate(reader.pages):
+                w = PdfWriter(); w.add_page(p)
+                buf = io.BytesIO(); w.write(buf); buf.seek(0)
+                out_map[f"page_{i+1}.pdf"] = buf.getvalue()
+            st.download_button("Unduh ZIP", make_zip_from_map(out_map), file_name="pages.zip", mime="application/zip")
+            st.success("✅ PDF berhasil dipisah")
 
-        elif mode == "Extract from ZIP":
-            f = st.file_uploader("Unggah File ZIP", type=["zip"])
-            if f and st.button("Ekstrak ke Folder/ZIP"):
-                try:
-                    z = zipfile.ZipFile(io.BytesIO(f.read()))
-                    extracted_files = {}
-                    for name in z.namelist():
-                        if not name.endswith('/'): # Skip directories
-                            extracted_files[name] = z.read(name)
-                    
-                    if extracted_files:
-                        st.download_button("Unduh Hasil Ekstraksi (ZIP)", make_zip_from_map(extracted_files), file_name="extracted_content.zip", mime="application/zip")
-                        st.info(f"{len(extracted_files)} file berhasil diekstrak.")
-                    else:
-                        st.warning("File ZIP kosong atau hanya berisi folder.")
-                except Exception as e:
-                    st.error(f"Gagal ekstrak: {e}")
+    # Reorder / Hapus Halaman
+    if pdf_option == "🔄 Reorder / Hapus Halaman":
+        f = st.file_uploader("Unggah PDF:", type="pdf")
+        order = st.text_input("Urutan halaman (misal: 2,1,3)", "")
+        if f and st.button("Proses"):
+            reader = PdfReader(io.BytesIO(f.read()))
+            pages = [int(x.strip()) - 1 for x in order.split(",") if x.strip().isdigit()]
+            writer = PdfWriter()
+            for i in pages:
+                writer.add_page(reader.pages[i])
+            buf = io.BytesIO(); writer.write(buf); buf.seek(0)
+            st.download_button("Unduh PDF Baru", buf.getvalue(), file_name="reordered.pdf", mime="application/pdf")
+            st.success("✅ Halaman berhasil diatur ulang")
 
+    # Batch Rename PDF Sequential
+    if pdf_option == "🧾 Batch Rename PDF (Sequential)":
+        files = st.file_uploader("Unggah PDF (multiple):", type="pdf", accept_multiple_files=True)
+        prefix = st.text_input("Prefix:", "Hasil_PDF")
+        if files and st.button("Proses Rename"):
+            output = io.BytesIO()
+            with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
+                for i, f in enumerate(files, 1):
+                    zf.writestr(f"{prefix}_{i:03d}.pdf", f.read())
+            st.download_button("Unduh ZIP", output.getvalue(), file_name="pdf_renamed.zip", mime="application/zip")
+            st.success("✅ Berhasil ganti nama")
 
-    if file_tool == "?? Konversi Dasar (misal: TXT/CSV/JSON -> Excel)":
-        st.markdown("---")
-        st.subheader("Konversi Data ke Excel")
-        f = st.file_uploader("Unggah file (TXT, CSV, JSON)", type=["txt", "csv", "json"])
-        if f:
-            df = None
-            try:
-                if f.name.lower().endswith(".csv"):
-                    df = pd.read_csv(io.BytesIO(f.read()))
-                elif f.name.lower().endswith(".json"):
-                    df = pd.read_json(io.BytesIO(f.read()))
-                elif f.name.lower().endswith(".txt"):
-                    # Asumsi txt adalah CSV sederhana
-                    df = pd.read_csv(io.BytesIO(f.read())) 
-                
-                if df is not None:
-                    st.dataframe(df.head())
-                    if st.button("Konversi ke Excel"):
-                        excel_bytes = df_to_excel_bytes(df)
-                        st.download_button("Unduh Excel", excel_bytes, file_name="converted_file.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-                        st.success("Konversi berhasil.")
-            except Exception as e:
-                st.error(f"Gagal memproses file: {e}")
+    # Batch Rename PDF by Excel
+    if pdf_option == "📑 Batch Rename PDF Sesuai Excel":
+        st.info("Excel wajib punya kolom `nama_lama` dan `nama_baru`")
+        excel = st.file_uploader("Unggah Excel:", type=["xlsx", "csv"])
+        files = st.file_uploader("Unggah PDF:", type=["pdf"], accept_multiple_files=True)
+        if excel and files and st.button("Proses"):
+            df = pd.read_excel(excel) if excel.name.endswith(".xlsx") else pd.read_csv(excel)
+            file_map = {f.name: f.read() for f in files}
+            out_map, not_found = {}, []
+            for _, row in df.iterrows():
+                old, new = str(row['nama_lama']).strip(), str(row['nama_baru']).strip()
+                if old in file_map:
+                    if not new.lower().endswith(".pdf"):
+                        new += ".pdf"
+                    out_map[new] = file_map[old]
+                else:
+                    not_found.append(old)
+            if out_map:
+                st.download_button("Unduh ZIP", make_zip_from_map(out_map), file_name="pdf_renamed_by_excel.zip", mime="application/zip")
+                st.success(f"✅ {len(out_map)} file berhasil diganti nama")
+            if not_found:
+                st.warning(f"Tidak ditemukan: {not_found[:5]}")
 
-    if file_tool == "??? Cek Keberadaan Library":
-        st.markdown("---")
-        st.subheader("Status Library Tambahan")
-        st.info("Fitur ini membantu Anda mengecek apakah library Python yang dibutuhkan sudah terinstall di lingkungan Streamlit ini.")
-        
-        libs = {
-            "PyPDF2": PdfReader is not None,
-            "pdfplumber": pdfplumber is not None,
-            "python-docx (Document)": Document is not None,
-            "pdf2image (convert_from_path/bytes)": PDF2IMAGE_AVAILABLE,
-            "deep_translator (GoogleTranslator)": Translator is not None, 
-        }
+# (lanjutan PDF ➜ Translate, Encrypt, MCU Tools, File Tools akan dilanjut di Bagian 3)
+# ===============================================================
+# BAGIAN 3 – Lanjutan: Translate PDF, MCU, File Tools, QR, Footer
+# ===============================================================
 
-        for name, is_available in libs.items():
-            status = "? Tersedia" if is_available else "? Tidak Tersedia"
-            st.markdown(f"- **{name}**: {status}")
+# ---------------------------------------------------------------
+# 🌍 Terjemahan PDF
+# ---------------------------------------------------------------
+if menu == "PDF Tools" and pdf_option == "🌍 Terjemahkan PDF ke Bahasa Lain":
+    st.markdown("---")
+    st.subheader("🌍 Terjemahkan PDF ke Bahasa Lain")
 
+    f = st.file_uploader("Unggah PDF:", type="pdf")
+    col1, col2 = st.columns(2)
+    src = col1.text_input("Bahasa sumber (ISO, contoh: auto)", "auto")
+    tgt = col2.text_input("Bahasa tujuan (contoh: en, id, fr)", "en")
 
-# -------------- MCU Tools --------------
+    if f and st.button("Proses Terjemahan"):
+        try:
+            if Translator is None or Document is None:
+                st.error("Pastikan library `deep_translator` dan `python-docx` sudah terinstall.")
+                st.stop()
+
+            raw = f.read()
+            text_blocks = []
+            if pdfplumber:
+                with pdfplumber.open(io.BytesIO(raw)) as doc:
+                    for p in doc.pages:
+                        text_blocks.append(p.extract_text() or "")
+            else:
+                reader = PdfReader(io.BytesIO(raw))
+                for p in reader.pages:
+                    text_blocks.append(p.extract_text() or "")
+
+            full_text = "\n\n".join(text_blocks)
+            translator = Translator(source=src, target=tgt)
+            chunks = [full_text[i:i+4000] for i in range(0, len(full_text), 4000)]
+            translated = ""
+            prog = st.progress(0)
+            for i, chunk in enumerate(chunks):
+                translated += translator.translate(chunk) + "\n"
+                prog.progress(int((i + 1) / len(chunks) * 100))
+            prog.empty()
+
+            doc = Document()
+            for para in translated.split("\n\n"):
+                doc.add_paragraph(para.strip())
+            out = io.BytesIO()
+            doc.save(out)
+            out.seek(0)
+            st.success("✅ Terjemahan selesai")
+            st.download_button("Unduh File Word", out.getvalue(), file_name="translated.docx",
+                               mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        except Exception as e:
+            st.error(f"Terjadi kesalahan: {e}")
+
+# ---------------------------------------------------------------
+# 🔐 Encrypt / Decrypt PDF
+# ---------------------------------------------------------------
+if menu == "PDF Tools" and pdf_option in ["🔐 Proteksi / Encrypt PDF", "🔓 Decrypt PDF"]:
+    f = st.file_uploader("Unggah PDF:", type="pdf")
+    pw = st.text_input("Password:", type="password")
+    if f and pw and st.button("Proses"):
+        reader = PdfReader(io.BytesIO(f.read()))
+        writer = PdfWriter()
+        for p in reader.pages:
+            writer.add_page(p)
+        if pdf_option == "🔐 Proteksi / Encrypt PDF":
+            try_encrypt(writer, pw)
+            out_name = "encrypted.pdf"
+        else:
+            reader.decrypt(pw)
+            out_name = "decrypted.pdf"
+        buf = io.BytesIO(); writer.write(buf); buf.seek(0)
+        st.download_button("Unduh PDF", buf.getvalue(), file_name=out_name, mime="application/pdf")
+        st.success("✅ Proses selesai")
+
+# ===============================================================
+# 🩺 MCU TOOLS
+# ===============================================================
 if menu == "MCU Tools":
-    add_back_to_dashboard_button() 
-    st.subheader("?? MCU Tools (Analisis Data Kesehatan)")
-    st.warning("Fitur ini membutuhkan template Excel/PDF khusus untuk analisis. Pastikan format input data Anda sesuai.")
-    
-    mcu_tool = st.selectbox("Pilih Fitur MCU", [
-        "?? Organise by Excel (Original Logic) - Fitur Baru", 
-        "?? Dashboard Analisis Data MCU (Excel) - Diperbarui", # NAMA DIPERBARUI
-        "?? Konversi Laporan MCU (PDF) ke Data", 
-    ], index=1) # Set default ke fitur yang baru diperbarui
-    
-    # === LOGIC FOR NEW FEATURE: Organise by Excel (Original Logic) ===
-    if mcu_tool == "?? Organise by Excel (Original Logic) - Fitur Baru":
-        st.markdown("---")
-        st.subheader("?? Organise by Excel (Original Logic)")
-        st.info("Fitur ini akan membuat struktur folder di dalam file ZIP berdasarkan data Excel dan nama file PDF yang diunggah.")
-        
-        excel_up = st.file_uploader("Upload Excel (No_MCU, Nama, Departemen, JABATAN) or (filename,target_folder)", type=["xlsx","csv"], key="mcu_organize_excel")
-        pdfs = st.file_uploader("Upload PDF files (multiple)", type="pdf", accept_multiple_files=True, key="mcu_organize_pdf")
-        
-        if excel_up and pdfs and st.button("Process MCU"):
-            try:
-                with st.spinner("Memproses MCU..."):
-                    # Baca Excel/CSV
-                    if excel_up.name.lower().endswith(".csv"):
-                        df = pd.read_csv(io.BytesIO(excel_up.read()))
-                    else:
-                        df = pd.read_excel(io.BytesIO(excel_up.read()))
-                        
-                    pdf_map = {p.name: p.read() for p in pdfs}
-                    out_map = {}
-                    not_found = []
-                    
-                    # Logika Organise by Excel (dari input user)
-                    if all(c in df.columns for c in ["No_MCU","Nama","Departemen","JABATAN"]):
-                        st.info("Mode: Organisasi berdasarkan kolom **No_MCU, Departemen, JABATAN** (Struktur: Dept/Jabatan/File.pdf).")
-                        total = len(df)
-                        prog = st.progress(0)
-                        for idx, r in df.iterrows():
-                            # Pastikan konversi ke string dan strip.
-                            # Mengganti karakter yang tidak valid untuk nama folder/file di ZIP dengan underscore
-                            no = str(r["No_MCU"]).strip()
-                            # Cleaning folder names for ZIP paths
-                            dept = str(r["Departemen"]).strip().replace('/', '_').replace('\\', '_') if not pd.isna(r["Departemen"]) else "Unknown_Dept"
-                            jab = str(r["JABATAN"]).strip().replace('/', '_').replace('\\', '_') if not pd.isna(r["JABATAN"]) else "Unknown_JABATAN"
-                            
-                            # Mencari PDF yang namanya diawali dengan No_MCU
-                            # Hati-hati: gunakan .lower() jika nama file mungkin tidak case-sensitive
-                            matches = [k for k in pdf_map.keys() if k.startswith(no)] 
-                            
-                            if matches:
-                                # Hanya ambil match pertama jika ada banyak (asumsi 1 MCU = 1 PDF)
-                                out_map[f"{dept}/{jab}/{matches[0]}"] = pdf_map[matches[0]]
-                            else:
-                                not_found.append(no)
-                            prog.progress(int((idx+1)/total*100))
-                            
-                    elif "filename" in df.columns and "target_folder" in df.columns:
-                        st.info("Mode: Organisasi berdasarkan kolom **filename** dan **target_folder** (Struktur: Folder/File.pdf).")
-                        total = len(df)
-                        prog = st.progress(0)
-                        for idx, r in df.iterrows():
-                            fn = str(r["filename"]).strip()
-                            # Cleaning folder name
-                            tgt = str(r["target_folder"]).strip().replace('/', '_').replace('\\', '_')
-                            
-                            if fn in pdf_map:
-                                out_map[f"{tgt}/{fn}"] = pdf_map[fn]
-                            else:
-                                not_found.append(fn)
-                            prog.progress(int((idx+1)/total*100))
-                            
-                    else:
-                        st.error("Format Excel/CSV tidak valid. Diperlukan kolom: **No_MCU, Nama, Departemen, JABATAN** ATAU **filename, target_folder**.")
-                        
-                # Hasil Download
-                if out_map:
-                    zipb = make_zip_from_map(out_map)
-                    st.download_button("Download MCU zip", zipb, file_name="mcu_structured.zip", mime="application/zip")
-                    st.success(f"? {len(out_map)} file berhasil diproses dan diatur strukturnya.")
-                else:
-                    st.warning("Tidak ada file yang berhasil diproses.")
-                    
-                if not_found:
-                    st.warning(f"{len(not_found)} ID/File tidak ditemukan di file PDF yang diunggah. Contoh: {not_found[:10]}")
-                    
-            except Exception:
-                st.error(f"Terjadi kesalahan saat memproses data. Cek format Excel Anda: {traceback.format_exc()}")
-    # === END OF ORGANISE LOGIC ===
+    add_back_to_dashboard_button()
+    st.subheader("🩺 MCU Tools – Analisis Data & Organisasi File")
 
-    # === LOGIC FOR ENHANCED DASHBOARD ANALISIS ===
-    if mcu_tool == "?? Dashboard Analisis Data MCU (Excel) - Diperbarui":
-        st.markdown("---")
-        st.subheader("?? Dashboard Analisis Hasil MCU Massal (Diperbarui)")
-        st.markdown("Unggah data hasil MCU (Excel/CSV) untuk analisis cepat, visualisasi, dan filter data.")
-        
-        uploaded_file = st.file_uploader(
-            "Unggah file Data MCU (Excel/CSV):",
-            type=["xlsx", "csv"],
-            key="mcu_data_uploader_new"
-        )
+    tool = st.selectbox("Pilih Fitur:", [
+        "📊 Dashboard Analisis Data MCU (Excel)",
+        "🗂️ Organise File MCU by Excel"
+    ])
 
-        if uploaded_file:
-            try:
-                # 1. Baca File
-                with st.spinner("Membaca data dan normalisasi kolom..."):
-                    if uploaded_file.name.lower().endswith('.csv'):
-                        df = pd.read_csv(io.BytesIO(uploaded_file.read()))
-                    else:
-                        df = pd.read_excel(io.BytesIO(uploaded_file.read()))
-    
-                    st.success(f"Data berhasil dimuat. Total Baris: {len(df)}")
-                    
-                    # Normalisasi kolom: Hapus karakter non-alfanumerik/underscore dan buat lowercase
-                    df.columns = df.columns.str.replace('[^A-Za-z0-9_]+', '', regex=True).str.lower()
-                
-                st.markdown("#### Preview Data (5 Baris Teratas)")
-                st.dataframe(df.head(), use_container_width=True)
+    if tool == "📊 Dashboard Analisis Data MCU (Excel)":
+        excel = st.file_uploader("Unggah Excel hasil MCU:", type=["xlsx", "csv"])
+        if excel:
+            df = pd.read_excel(excel) if excel.name.endswith(".xlsx") else pd.read_csv(excel)
+            st.dataframe(df.head())
+            st.success(f"✅ Data terbaca: {len(df)} baris")
+            if st.checkbox("Tampilkan statistik ringkas"):
+                st.dataframe(df.describe(include='all'))
 
-                st.markdown("---")
-                st.markdown("### ?? Visualisasi & Analisis Cepat Status")
-                
-                # 2. Analisis Status Kesehatan
-                # Cari kolom yang mengandung 'status', 'fit', atau 'hasil'
-                status_cols = [col for col in df.columns if 'status' in col or 'fit' in col or 'hasil' in col]
-                
-                if status_cols:
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        status_col = st.selectbox(
-                            "Pilih Kolom Utama Status/Hasil:", 
-                            status_cols, 
-                            index=0, 
-                            key="select_status_col",
-                            help="Pilih kolom yang berisi status akhir MCU (misal: fit, unfit)."
-                        )
-                    
-                    st.markdown(f"##### 1. Distribusi Status Kesehatan (`{status_col}`)")
-                    
-                    # Data Cleaning & Aggregation
-                    df[status_col] = df[status_col].astype(str).str.strip().str.upper().fillna("TIDAK DIKETAHUI")
-                    status_counts = df[status_col].value_counts().reset_index()
-                    status_counts.columns = [status_col, 'Jumlah']
-                    status_counts = status_counts.sort_values(by='Jumlah', ascending=False)
-                    
-                    if len(status_counts) > 0:
-                        st.dataframe(status_counts, use_container_width=True)
-                        st.bar_chart(status_counts.set_index(status_col))
-                        
-                        # Download Data Agregat
-                        excel_bytes = df_to_excel_bytes(status_counts)
-                        st.download_button(
-                            "?? Unduh Data Agregasi Status (Excel)", 
-                            data=excel_bytes, 
-                            file_name="status_agregat.xlsx", 
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                    else:
-                        st.info("Kolom status/hasil tidak memiliki data unik yang valid.")
-                else:
-                    st.warning("Kolom yang mengandung kata 'status', 'fit', atau 'hasil' tidak ditemukan untuk Analisis Cepat Status. Cek penamaan kolom Anda.")
+    elif tool == "🗂️ Organise File MCU by Excel":
+        st.info("Excel harus memiliki kolom `nama_lama` dan `folder_tujuan`.")
+        excel = st.file_uploader("Unggah Excel mapping:", type=["xlsx", "csv"])
+        files = st.file_uploader("Unggah file MCU:", accept_multiple_files=True)
+        if excel and files and st.button("Proses Organisasi"):
+            df = pd.read_excel(excel) if excel.name.endswith(".xlsx") else pd.read_csv(excel)
+            file_map = {f.name: f.read() for f in files}
+            out_zip = io.BytesIO()
+            with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for _, r in df.iterrows():
+                    old = str(r['nama_lama']).strip()
+                    folder = str(r['folder_tujuan']).strip()
+                    if old in file_map:
+                        zf.writestr(f"{folder}/{old}", file_map[old])
+            out_zip.seek(0)
+            st.download_button("Unduh ZIP Terorganisir", out_zip.getvalue(), file_name="mcu_organised.zip", mime="application/zip")
+            st.success("✅ File terorganisir sesuai Excel")
 
-                st.markdown("---")
-                
-                # 3. Analisis Categorical/Filter
-                st.markdown("### ?? Filter dan Analisis Data Kategorikal")
-                
-                # Pilih kolom kategorikal (object type) dengan jumlah unik > 1 dan <= 50
-                filter_cols = [
-                    col for col in df.columns 
-                    if df[col].dtype == 'object' and df[col].nunique() > 1 and df[col].nunique() <= 50
-                ]
-                
-                if filter_cols:
-                    col_to_analyze = st.selectbox(
-                        "Pilih Kolom Kategorikal (misal: Departemen, Jabatan, Gender):", 
-                        filter_cols,
-                        key="select_filter_col"
-                    )
-                    
-                    st.write(f"##### Distribusi Nilai dalam Kolom `{col_to_analyze}`")
-                    
-                    # Data Cleaning & Aggregation
-                    df[col_to_analyze] = df[col_to_analyze].astype(str).str.strip().str.upper().fillna("TIDAK DIKETAHUI")
-                    cat_counts = df[col_to_analyze].value_counts().reset_index()
-                    cat_counts.columns = [col_to_analyze, 'Jumlah']
-                    
-                    st.dataframe(cat_counts, use_container_width=True)
-                    st.bar_chart(cat_counts.set_index(col_to_analyze))
-                    
-                    # Download Agregat Kategorikal
-                    excel_bytes_cat = df_to_excel_bytes(cat_counts)
-                    st.download_button(
-                        f"?? Unduh Data Agregasi {col_to_analyze} (Excel)", 
-                        data=excel_bytes_cat, 
-                        file_name=f"{col_to_analyze.lower()}_agregat.xlsx", 
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-                    
-                    # Filter Data Mentah
-                    st.markdown("---")
-                    st.markdown("##### Tampilkan Data Mentah Terfilter")
-                    
-                    filter_values = ["-- Pilih Nilai untuk Filter Data --"] + list(df[col_to_analyze].unique())
-                    selected_value = st.selectbox(
-                        f"Pilih Nilai `{col_to_analyze}` untuk Menampilkan Data:", 
-                        filter_values,
-                        key="select_cat_value"
-                    )
-                    
-                    if selected_value != "-- Pilih Nilai untuk Filter Data --":
-                        df_filtered = df[df[col_to_analyze] == selected_value]
-                        st.info(f"Menampilkan **{len(df_filtered)}** baris data untuk `{selected_value}`.")
-                        st.dataframe(df_filtered, use_container_width=True)
-                        
-                        # Download Filtered Data Mentah
-                        excel_bytes_filtered = df_to_excel_bytes(df_filtered)
-                        st.download_button(
-                            f"?? Unduh Data Filtered ({selected_value}) (Excel)", 
-                            data=excel_bytes_filtered, 
-                            file_name=f"data_filtered_{selected_value.lower().replace(' ', '_')}.xlsx", 
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-                        
-                    else:
-                        st.info("Pilih nilai di atas untuk menampilkan dan mengunduh data mentah yang terfilter.")
-                else:
-                    st.info("Tidak ada kolom kategorikal yang cocok (object type dengan 2-50 nilai unik) untuk analisis mendalam. Pastikan kolom seperti 'Departemen' atau 'Gender' bertipe teks.")
+# ===============================================================
+# 📂 FILE TOOLS
+# ===============================================================
+if menu == "File Tools":
+    add_back_to_dashboard_button()
+    st.subheader("📂 File Tools")
 
-            except Exception as e:
-                st.error(f"Gagal memuat atau memproses file. Pastikan file Excel/CSV Anda valid: {e}")
-                traceback.print_exc()
+    tool = st.selectbox("Pilih Fitur:", [
+        "📦 Zip / Unzip File",
+        "📑 Konversi TXT/CSV/JSON ke Excel"
+    ])
 
-    # === LOGIC FOR PDF TO DATA (Placeholder) ===
-    if mcu_tool == "?? Konversi Laporan MCU (PDF) ke Data":
-        st.markdown("---")
-        st.subheader("Ekstraksi Data dari Laporan MCU PDF")
-        st.warning("Fitur ini sangat bergantung pada struktur dan format PDF. Mungkin memerlukan konfigurasi kustom.")
-        
-        pdf_up = st.file_uploader("Unggah Laporan MCU PDF:", type=["pdf"], key="mcu_pdf_up")
-        
-        if pdf_up and st.button("Ekstrak Data"):
-            st.error("Fitur ini adalah placeholder dan memerlukan logic ekstraksi PDF yang kompleks untuk diimplementasikan.")
+    if tool == "📦 Zip / Unzip File":
+        mode = st.radio("Mode:", ["Zip Files", "Extract ZIP"])
+        if mode == "Zip Files":
+            files = st.file_uploader("Unggah file:", accept_multiple_files=True)
+            if files and st.button("Buat ZIP"):
+                out = {f.name: f.read() for f in files}
+                st.download_button("Unduh ZIP", make_zip_from_map(out), file_name="files.zip", mime="application/zip")
+        else:
+            f = st.file_uploader("Unggah ZIP:", type=["zip"])
+            if f and st.button("Ekstrak ZIP"):
+                z = zipfile.ZipFile(io.BytesIO(f.read()))
+                out = {name: z.read(name) for name in z.namelist() if not name.endswith("/")}
+                st.download_button("Unduh ZIP Hasil", make_zip_from_map(out), file_name="unzipped.zip", mime="application/zip")
 
+    elif tool == "📑 Konversi TXT/CSV/JSON ke Excel":
+        f = st.file_uploader("Unggah File:", type=["txt", "csv", "json"])
+        if f and st.button("Konversi"):
+            df = None
+            if f.name.endswith(".csv"):
+                df = pd.read_csv(f)
+            elif f.name.endswith(".json"):
+                df = pd.read_json(f)
+            elif f.name.endswith(".txt"):
+                df = pd.read_csv(f)
+            if df is not None:
+                st.dataframe(df.head())
+                st.download_button("Unduh Excel", df_to_excel_bytes(df), file_name="converted.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.success("✅ Konversi berhasil")
 
-# -------------- Tentang (Diperbarui) --------------
+# ===============================================================
+# 🔳 QR CODE GENERATOR DENGAN LOGO
+# ===============================================================
+if menu == "QR Code":
+    add_back_to_dashboard_button()
+    st.subheader("🔳 QR Code Generator dengan Logo")
+
+    data = st.text_input("Masukkan teks atau URL:", "")
+    logo_file = st.file_uploader("Unggah logo (opsional):", type=["png", "jpg", "jpeg", "webp"])
+    col1, col2 = st.columns(2)
+    box_size = col1.slider("Ukuran kotak QR", 5, 20, 10)
+    border = col2.slider("Tebal border", 2, 10, 4)
+
+    if st.button("🚀 Buat QR Code"):
+        if not data:
+            st.warning("Masukkan teks terlebih dahulu.")
+        else:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=box_size,
+                border=border,
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+            if logo_file is not None:
+                logo = PILImage.open(logo_file)
+                w, h = img.size
+                logo_size = int(w * 0.2)
+                logo = logo.resize((logo_size, logo_size))
+                pos = ((w - logo_size) // 2, (h - logo_size) // 2)
+                img.paste(logo, pos, mask=logo if logo.mode == "RGBA" else None)
+
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+            st.image(img, caption="Hasil QR Code", use_container_width=False)
+            st.download_button("💾 Unduh QR Code", buf.getvalue(), file_name="qrcode.png", mime="image/png")
+            st.success("✅ QR Code berhasil dibuat!")
+
+# ===============================================================
+# ℹ️ TENTANG
+# ===============================================================
 if menu == "Tentang":
-    add_back_to_dashboard_button() 
-    st.subheader("?? Tentang Master App – Tools MCU")
+    add_back_to_dashboard_button()
+    st.subheader("ℹ️ Tentang Aplikasi KAY App")
     st.markdown("""
-    **KAY App** adalah aplikasi serbaguna berbasis Streamlit untuk membantu:
-    - ?? **Kompres Foto & Gambar**
-    - ?? **Pengelolaan Dokumen PDF** (gabung, pisah, proteksi, ekstraksi, Reorder/Hapus Halaman, Batch Rename, **Terjemahan**)
-    - ?? **Analisis & Pengolahan Hasil MCU** (Dashboard Analisis Data, **Organise by Excel**)
-    - ?? **Manajemen File & Konversi Dasar** (Batch Rename/Format Gambar, Batch Rename PDF)
+    **KAY App – Tools Serbaguna**
+    - Gabungan fitur: PDF, Gambar, MCU, QR Code.
+    - Dibangun dengan Streamlit.
+    - Dibuat dengan ❤️ oleh tim pengembang KAY.
 
-    <br>
-    
-    ### Kebutuhan Library Tambahan
-    Beberapa fitur memerlukan library tambahan (instal di environment Anda):
-    - `PyPDF2` (Dasar PDF): `pip install PyPDF2`
-    - `pdfplumber` untuk ekstraksi tabel teks: `pip install pdfplumber`
-    - `python-docx` untuk menghasilkan .docx: `pip install python-docx`
-    - `deep-translator` untuk fitur terjemahan PDF: `pip install deep-translator`
-    - `pdf2image` + poppler untuk konversi PDF->Gambar / Preview gambar: `pip install pdf2image`
-    - `pandas` & `openpyxl` untuk Analisis MCU dan Batch Rename by Excel: `pip install pandas openpyxl`
+    **Library Utama yang digunakan:**
+    - streamlit, PyPDF2, pdfplumber, python-docx
+    - pillow, pdf2image, qrcode, pandas, openpyxl, deep_translator
     """)
-    st.info("Data diproses di server tempat Streamlit dijalankan. Untuk mengaktifkan semua fitur, pasang dependensi yang diperlukan.")
 
-# ----------------- Footer -----------------
-st.markdown("""
-<hr style="border: none; border-top: 1px solid #cfe2ff; margin-top: 1.5rem;">
-<p style="text-align: right; color: #a0a0a0; font-size: 0.8rem;">
-Developed by AR - 2025
-</p>
-""", unsafe_allow_html=True)
+# ===============================================================
+# FOOTER
+# ===============================================================
+def footer():
+    st.markdown("""
+    <hr style="border:none;height:1px;background:#ccc;">
+    <div style="text-align:center;color:gray;font-size:0.8em;">
+        © 2025 KAY App – Dibuat dengan ❤️ dan Streamlit.
+    </div>
+    """, unsafe_allow_html=True)
 
+footer()
 
