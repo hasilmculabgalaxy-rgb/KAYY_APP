@@ -107,8 +107,8 @@ def navigate_to(target_menu):
 
 # ----------------- Streamlit config & CSS (Perapihan Ikon) -----------------
 # LOGO_PATH = os.path.join("assets", "logo.png") # Dinonaktifkan karena file assets tidak tersedia
-LOGO_PATH = "?"
-# Menggunakan emoji toolbox ? sebagai fallback ikon
+LOGO_PATH = ""
+# Menggunakan emoji toolbox  sebagai fallback ikon
 page_icon = LOGO_PATH
 st.set_page_config(page_title="Master App – Tools MCU", page_icon=page_icon, layout="wide", initial_sidebar_state="collapsed")
 
@@ -222,7 +222,7 @@ def add_back_to_dashboard_button():
 header_col1, header_col2 = st.columns([1, 4])
 with header_col1:
     # Menggunakan ikon emoji karena LOGO_PATH tidak tersedia
-    st.markdown("<h1 style='font-size: 3rem;'>?</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='font-size: 3rem;'></h1>", unsafe_allow_html=True)
 
 with header_col2:
     st.title("Master - App – Tools MCU")
@@ -239,7 +239,7 @@ st.markdown("---")
 if menu == "Dashboard":
     
     st.markdown('<div class="dashboard-container">', unsafe_allow_html=True)
-    st.markdown("## ? Pilih Fitur Utama")
+    st.markdown("##  Pilih Fitur Utama")
     
     # ------------------ FITUR UTAMA ------------------
     cols1 = st.columns(3)
@@ -247,8 +247,8 @@ if menu == "Dashboard":
     # Kompres Foto
     with cols1[0]:
         with st.container():
-            # Ikon: ? (Picture) atau  (Camera)
-            st.markdown('<div class="feature-card"><b>? Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
+            # Ikon:  (Picture) atau  (Camera)
+            st.markdown('<div class="feature-card"><b> Kompres Foto / Gambar Tools</b><br>Perkecil ukuran, ubah format, Batch Rename Sesuai Excel.</div>', unsafe_allow_html=True)
             if st.button("Buka Kompres Foto", key="dash_foto"):
                 navigate_to("Kompres Foto")
 
@@ -301,7 +301,7 @@ if menu == "Dashboard":
 # -------------- Kompres Foto / Image Tools --------------
 if menu == "Kompres Foto":
     add_back_to_dashboard_button() 
-    st.subheader("? Kompres & Kelola Foto/Gambar")
+    st.subheader(" Kompres & Kelola Foto/Gambar")
     
     # Sub-menu untuk gambar
     img_tool = st.selectbox("Pilih Fitur Gambar", [
@@ -334,7 +334,7 @@ if menu == "Kompres Foto":
                     prog.progress(int((i+1)/total*100))
             if out_map:
                 zipb = make_zip_from_map(out_map)
-                st.success(f"? {len(out_map)} file berhasil dikompres")
+                st.success(f" {len(out_map)} file berhasil dikompres")
                 st.download_button("Unduh Hasil (ZIP)", zipb, file_name="foto_kompres.zip", mime="application/zip")
             else:
                 st.warning("Tidak ada file berhasil dikompres.")
@@ -383,7 +383,7 @@ if menu == "Kompres Foto":
                                     img.save(img_io, format=output_format_pil) 
                                 img_io.seek(0)
                                 zf.writestr(new_filename, img_io.read())
-                        st.success(f"? Berhasil memproses {len(uploaded_files)} file.") 
+                        st.success(f" Berhasil memproses {len(uploaded_files)} file.") 
                         st.download_button("Unduh File ZIP Hasil Batch", data=output_zip.getvalue(), file_name="hasil_batch_gambar.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
@@ -436,7 +436,7 @@ if menu == "Kompres Foto":
                     # 4. Buat ZIP
                     if out_map:
                         zipb = make_zip_from_map(out_map)
-                        st.success(f"? {len(out_map)} file berhasil diganti namanya dan dikemas.") 
+                        st.success(f" {len(out_map)} file berhasil diganti namanya dan dikemas.") 
                         st.download_button("Unduh Hasil (ZIP)", zipb, file_name="gambar_renamed_by_excel.zip", mime="application/zip")
                     else:
                         st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
@@ -455,18 +455,18 @@ if menu == "PDF Tools":
     # Menu yang lebih terstruktur dan ditambahkan fitur baru dengan ikon yang jelas
     pdf_options = [
         "--- Pilih Tools ---",
-        "? Gabung PDF", 
+        " Gabung PDF", 
         " Pisah PDF", 
         " Reorder/Hapus Halaman PDF", 
         " Batch Rename PDF (Sequential)", 
         " Batch Rename PDF Sesuai Excel (Fitur Baru)", 
-        "? Image -> PDF", 
+        " Image -> PDF", 
         " PDF -> Image", 
         " Ekstraksi Teks/Tabel", 
-        "? Terjemahan PDF ke Bahasa Lain (Fitur Baru)", # <-- FITUR BARU TRANSLATE
+        " Terjemahan PDF ke Bahasa Lain (Fitur Baru)", # <-- FITUR BARU TRANSLATE
         " Konversi PDF", 
         " Proteksi PDF", 
-        "? Utility PDF", 
+        " Utility PDF", 
     ]
     
     tool_select = st.selectbox("Pilih fitur PDF", pdf_options)
@@ -476,22 +476,22 @@ if menu == "PDF Tools":
     elif tool_select == " Ekstraksi Teks/Tabel": tool = st.selectbox("Pilih mode ekstraksi", ["Extract Text", "Extract Tables -> Excel"]) 
     elif tool_select == " Konversi PDF": tool = st.selectbox("Pilih mode konversi", ["PDF -> Word", "PDF -> Excel (text)"]) 
     elif tool_select == " Proteksi PDF": tool = st.selectbox("Pilih mode proteksi", ["Encrypt PDF", "Decrypt PDF", "Batch Lock (Excel)"]) 
-    elif tool_select == "? Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
-    elif tool_select == "? Gabung PDF": tool = "Gabung PDF" 
+    elif tool_select == " Utility PDF": tool = st.selectbox("Pilih mode utilitas", ["Hapus Halaman", "Rotate PDF", "Kompres PDF", "Watermark PDF", "Preview PDF"]) 
+    elif tool_select == " Gabung PDF": tool = "Gabung PDF" 
     elif tool_select == " Pisah PDF": tool = "Pisah PDF" 
     elif tool_select == " Reorder/Hapus Halaman PDF": tool = "Reorder PDF" 
     elif tool_select == " Batch Rename PDF (Sequential)": tool = "Batch Rename PDF Seq" 
     elif tool_select == " Batch Rename PDF Sesuai Excel (Fitur Baru)": tool = "Batch Rename PDF Excel" 
     elif tool_select == " PDF -> Image": tool = "PDF -> Image" 
-    elif tool_select == "? Image -> PDF": tool = "Image -> PDF" 
-    elif tool_select == "? Terjemahan PDF ke Bahasa Lain (Fitur Baru)": tool = "Translate PDF" # <-- MAPPING TRANSLATE
+    elif tool_select == " Image -> PDF": tool = "Image -> PDF" 
+    elif tool_select == " Terjemahan PDF ke Bahasa Lain (Fitur Baru)": tool = "Translate PDF" # <-- MAPPING TRANSLATE
     else: tool = None
     
 
 # --- FITUR BARU: Terjemahan PDF (Optimasi Struktur/Rapi) ---
     if tool == "Translate PDF":
         st.markdown("---")
-        st.markdown("### ? Terjemahan Teks PDF (Optimasi Agar Lebih Rapi)")
+        st.markdown("###  Terjemahan Teks PDF (Optimasi Agar Lebih Rapi)")
         st.info("Fitur ini mencoba membuat hasil Word lebih rapi dengan menggabungkan baris-baris pendek yang berdekatan (*pre-processing*). **Replikasi tata letak kolom/tabel PDF tetap terbatas.**")
         
         if Translator is None or Document is None:
@@ -648,7 +648,7 @@ if menu == "PDF Tools":
                     doc.save(out)
                     out.seek(0)
                     
-                st.success("? Terjemahan berhasil! Unduh file Word hasil terjemahan.")
+                st.success(" Terjemahan berhasil! Unduh file Word hasil terjemahan.")
                 st.download_button(
                     f" Unduh Hasil Terjemahan ({target_lang}).docx", 
                     data=out.getvalue(), 
@@ -713,7 +713,7 @@ if menu == "PDF Tools":
                     # 4. Buat ZIP
                     if out_map:
                         zipb = make_zip_from_map(out_map)
-                        st.success(f"? {len(out_map)} file berhasil diganti namanya dan dikemas.") 
+                        st.success(f" {len(out_map)} file berhasil diganti namanya dan dikemas.") 
                         st.download_button("Unduh Hasil (ZIP)", zipb, file_name="pdf_renamed_by_excel.zip", mime="application/zip")
                     else:
                         st.warning("Tidak ada file yang cocok ditemukan atau diproses.")
@@ -746,7 +746,7 @@ if menu == "PDF Tools":
                             for i, file in enumerate(uploaded_files, start_num):
                                 new_filename = f"{new_prefix}_{i:03d}.pdf"
                                 zf.writestr(new_filename, file.read())
-                        st.success(f"? Berhasil mengganti nama {len(uploaded_files)} file.") 
+                        st.success(f" Berhasil mengganti nama {len(uploaded_files)} file.") 
                         st.download_button("Unduh File ZIP Hasil Rename", data=output_zip.getvalue(), file_name="pdf_renamed.zip", mime="application/zip")
                     except Exception as e: st.error(f"Gagal memproses file: {e}"); traceback.print_exc()
 
@@ -814,7 +814,7 @@ if menu == "PDF Tools":
 
     if tool == "Gabung PDF":
         st.markdown("---")
-        st.markdown("### ? Gabung PDF")
+        st.markdown("###  Gabung PDF")
         files = st.file_uploader("Upload PDFs (multiple):", type="pdf", accept_multiple_files=True)
         if files and st.button("Gabung"):
             try:
@@ -856,7 +856,7 @@ if menu == "PDF Tools":
                 
     if tool == "Hapus Halaman":
         st.markdown("---")
-        st.markdown("### ? Hapus Halaman dari PDF")
+        st.markdown("###  Hapus Halaman dari PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         page_no = st.number_input("Halaman yang dihapus (1-based)", min_value=1, value=1)
         if f and st.button("Hapus Halaman"):
@@ -981,7 +981,7 @@ if menu == "PDF Tools":
 
     if tool == "Image -> PDF":
         st.markdown("---")
-        st.markdown("### ? Gambar ke PDF")
+        st.markdown("###  Gambar ke PDF")
         imgs = st.file_uploader("Upload images", type=["jpg","png","jpeg"], accept_multiple_files=True)
         if imgs and st.button("Images -> PDF"):
             try:
@@ -1198,7 +1198,7 @@ if menu == "PDF Tools":
 
     if tool == "Preview PDF":
         st.markdown("---")
-        st.markdown("### ? Preview PDF")
+        st.markdown("###  Preview PDF")
         f = st.file_uploader("Upload PDF", type="pdf")
         mode = st.radio("Preview mode", ["First page (fast)", "All pages (slow)"])
         if f and st.button("Show Preview"):
@@ -1258,7 +1258,7 @@ if menu == "File Tools":
     file_tool = st.selectbox("Pilih Fitur File", [
         " Zip / Unzip File", 
         " Konversi Dasar (misal: TXT/CSV/JSON -> Excel)", 
-        "? Cek Keberadaan Library"
+        " Cek Keberadaan Library"
     ])
 
     if file_tool == " Zip / Unzip File":
@@ -1320,7 +1320,7 @@ if menu == "File Tools":
             except Exception as e:
                 st.error(f"Gagal memproses file: {e}")
 
-    if file_tool == "? Cek Keberadaan Library":
+    if file_tool == " Cek Keberadaan Library":
         st.markdown("---")
         st.subheader("Status Library Tambahan")
         st.info("Fitur ini membantu Anda mengecek apakah library Python yang dibutuhkan sudah terinstall di lingkungan Streamlit ini.")
@@ -1334,7 +1334,7 @@ if menu == "File Tools":
         }
 
         for name, is_available in libs.items():
-            status = "? Tersedia" if is_available else "? Tidak Tersedia"
+            status = " Tersedia" if is_available else " Tidak Tersedia"
             st.markdown(f"- **{name}**: {status}")
 
 
@@ -1418,7 +1418,7 @@ if menu == "MCU Tools":
                 if out_map:
                     zipb = make_zip_from_map(out_map)
                     st.download_button("Download MCU zip", zipb, file_name="mcu_structured.zip", mime="application/zip")
-                    st.success(f"? {len(out_map)} file berhasil diproses dan diatur strukturnya.")
+                    st.success(f" {len(out_map)} file berhasil diproses dan diatur strukturnya.")
                 else:
                     st.warning("Tidak ada file yang berhasil diproses.")
                     
@@ -1615,6 +1615,7 @@ st.markdown("""
 Developed by AR - 2025
 </p>
 """, unsafe_allow_html=True)
+
 
 
 
